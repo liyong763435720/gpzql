@@ -1,0 +1,59 @@
+# Python 编译产物
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# 数据库文件（运行时通过挂载卷提供）
+*.db
+*.db-journal
+
+# 测试文件
+test_*.py
+check_*.py
+verify_*.py
+compare_*.py
+analyze_*.py
+fix_*.py
+
+# 文档（保留 README）
+*.md
+!README.md
+
+# 配置和运行时状态文件（通过挂载卷提供）
+config.json
+update_progress.json
+update_checkpoint.json
+
+# 日志
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# 授权私钥（绝对不能打包进镜像）
+tools/private_key.pem
+tools/public_key.pem
+tools/license_*.txt
+installer/
+
+# 编译产物（Windows exe，Linux容器不需要）
+dist/
+build/
+*.spec
+
+# 系统文件
+.DS_Store
+.git/
+.gitignore
+.dockerignore

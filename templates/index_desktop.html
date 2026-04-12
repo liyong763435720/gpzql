@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>涌金阁 - 多市场量化分析平台</title>
+    <link href="/static/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendor/bootstrap-icons.min.css" rel="stylesheet">
+    <script src="/static/vendor/marked.min.js"></script>
+    <style>
+        /* ===== CSS 变量 ===== */
+        :root {
+            --primary:        #1677ff;
+            --primary-hover:  #0958d9;
+            --primary-light:  #e6f4ff;
+            --success:        #52c41a;
+            --warning:        #faad14;
+            --danger:         #ff4d4f;
+            --info:           #13c2c2;
+
+            --text-h:         #111827;
+            --text-body:      #374151;
+            --text-secondary: #6b7280;
+            --text-muted:     #9ca3af;
+
+            --bg-page:        #f5f7fa;
+            --bg-card:        #ffffff;
+            --bg-hover:       #f9fafb;
+
+            --border:         #e5e7eb;
+            --border-light:   #f3f4f6;
+
+            --sidebar-w:      220px;
+            --topbar-h:       56px;
+            --radius-sm:      6px;
+            --radius:         8px;
+            --radius-lg:      12px;
+            --shadow-sm:      0 1px 2px rgba(0,0,0,.05);
+            --shadow:         0 1px 4px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+            --shadow-lg:      0 8px 24px rgba(0,0,0,.1);
+            --transition:     all .22s ease;
+        }
+
+        /* ===== 基础 ===== */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-page);
+            color: var(--text-body);
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* ===== 登录页 ===== */
+        #login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #e0eaff 0%, #f5f7fa 60%, #dbeafe 100%);
+        }
+
+        .login-box {
+            width: 400px;
+            background: #fff;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 40px;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo .logo-icon {
+            width: 56px; height: 56px;
+            background: var(--primary-light);
+            border-radius: var(--radius);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .login-logo h4 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 20px;
+            color: var(--text-h);
+        }
+
+        .login-logo p {
+            margin: 4px 0 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .login-box .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-body);
+        }
+
+        .login-box .form-control {
+            border-color: var(--border);
+            border-radius: var(--radius-sm);
+            height: 40px;
+        }
+
+        .login-box .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(22,119,255,.1);
+        }
+
+        .login-box .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            height: 40px;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: .02em;
+        }
+
+        .login-box .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        .login-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        /* ===== 主布局 ===== */
+        #main-content {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== 侧边栏 ===== */
+        #sidebar {
+            width: var(--sidebar-w);
+            min-height: 100vh;
+            background: #fff;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 200;
+            transition: var(--transition);
+        }
+
+        .sidebar-brand {
+            height: var(--topbar-h);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border-light);
+            text-decoration: none;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sidebar-brand .brand-icon {
+            font-size: 22px;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .sidebar-brand .brand-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-h);
+            white-space: nowrap;
+        }
+
+        /* 复用 Bootstrap .navbar-nav 结构但竖排 */
+        .navbar-nav {
+            flex-direction: column !important;
+            flex: 1;
+            padding: 10px 0;
+            overflow-y: auto;
+            margin: 0 !important;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            padding: 14px 20px 4px;
+        }
+
+        /* ===== 使用指南样式 ===== */
+        .help-toc-link {
+            display: block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: var(--text-secondary, #555);
+            text-decoration: none;
+            transition: background .15s, color .15s;
+            line-height: 1.4;
+        }
+        .help-toc-link:hover { background: var(--hover-bg, #f3f4f6); color: var(--primary, #2563eb); }
+        .help-toc-link.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
+        .help-h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: .6rem; }
+        .help-section { scroll-margin-top: 20px; }
+        .help-step-card {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 10px; padding: 16px; height: 100%;
+        }
+        .help-step-num {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #2563eb; color: #fff; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .85rem; margin-bottom: 8px;
+        }
+        .help-formula-card {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-left: 4px solid #2563eb; border-radius: 8px;
+        }
+        .help-formula-title {
+            font-weight: 700; font-size: .9rem;
+            padding: 10px 14px 6px; border-bottom: 1px solid #e2e8f0;
+        }
+        .help-formula-body { padding: 10px 14px; }
+        .help-formula-body code {
+            display: block; background: #fff; border: 1px solid #e2e8f0;
+            border-radius: 6px; padding: 6px 10px; font-size: .85rem;
+            color: #1e40af; margin-bottom: 2px;
+        }
+        .help-tip-card {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 10px; padding: 14px;
+            border-left-width: 4px !important;
+        }
+
+        .nav-item .nav-link {
+            display: flex !important;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px 9px 20px !important;
+            color: var(--text-secondary) !important;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+            border-radius: 0;
+            transition: var(--transition);
+            white-space: nowrap;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+
+        .nav-item .nav-link i {
+            font-size: 16px;
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-item .nav-link:hover {
+            background: var(--bg-page);
+            color: var(--primary) !important;
+        }
+
+        .nav-item .nav-link.active {
+            background: var(--primary-light) !important;
+            color: var(--primary) !important;
+            border-left-color: var(--primary);
+            font-weight: 500;
+        }
+
+        .nav-divider {
+            height: 1px;
+            background: var(--border-light);
+            margin: 6px 0;
+        }
+
+        /* 子菜单 */
+        .nav-parent > .nav-link {
+            justify-content: space-between !important;
+            cursor: pointer;
+            user-select: none;
+        }
+        .nav-group-title {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: var(--text-muted) !important;
+            text-transform: uppercase !important;
+            letter-spacing: .07em !important;
+            padding-top: 14px !important;
+            padding-bottom: 4px !important;
+        }
+        .nav-group-title:hover { background: transparent !important; }
+        .nav-parent > .nav-link .nav-arrow {
+            font-size: 12px;
+            transition: transform .2s;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .nav-parent.open > .nav-link .nav-arrow {
+            transform: rotate(180deg);
+        }
+        .nav-submenu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height .25s ease;
+        }
+        .nav-parent.open .nav-submenu {
+            max-height: 600px;
+        }
+        .nav-submenu .nav-link {
+            padding-left: 44px !important;
+            font-size: 13px !important;
+            border-left: 3px solid transparent;
+        }
+        .nav-submenu .nav-link.active {
+            border-left-color: var(--primary);
+            background: var(--primary-light) !important;
+            color: var(--primary) !important;
+        }
+
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        #current-user-info {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #logout-btn {
+            font-size: 12px;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        #logout-btn:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: #fff1f0;
+        }
+
+        /* ===== 主区域 ===== */
+        #main-area {
+            flex: 1;
+            margin-left: var(--sidebar-w);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ===== 顶栏 ===== */
+        #topbar {
+            height: var(--topbar-h);
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 12px;
+        }
+
+        #topbar-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-h);
+        }
+
+        /* 移动端汉堡按钮 */
+        #mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-right: 4px;
+        }
+
+        /* ===== 页面内容 ===== */
+        #page-content {
+            flex: 1;
+            padding: 24px;
+        }
+
+        .tab-content { display: none; }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
+            transition: box-shadow .22s;
+        }
+
+        .card:hover { box-shadow: var(--shadow); }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid var(--border-light);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h5, .card-header h6 {
+            margin: 0;
+            font-weight: 600;
+            color: var(--text-h);
+        }
+
+        .card-header h5 { font-size: 15px; }
+        .card-header h6 { font-size: 14px; }
+
+        .card-body { padding: 20px; }
+
+        /* ===== 统计卡片行 ===== */
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            height: 100%;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .stat-card .stat-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--text-h);
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .stat-card .stat-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ===== 表格 ===== */
+        .table {
+            font-size: 13px;
+            color: var(--text-body);
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            background: var(--bg-page);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 14px;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 10px 14px;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .table tbody tr:hover td { background: #fafbff; }
+        .table tbody tr:last-child td { border-bottom: none; }
+
+        .table-responsive {
+            max-height: 520px;
+            overflow-y: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        /* ===== 按钮 ===== */
+        .btn {
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary  { background: var(--primary); border-color: var(--primary); }
+        .btn-primary:hover  { background: var(--primary-hover); border-color: var(--primary-hover); }
+        .btn-outline-primary { color: var(--primary); border-color: var(--primary); }
+        .btn-outline-primary:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+        .btn-check:checked + .btn-outline-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .btn-check:checked + .btn-outline-danger {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+        }
+
+        /* ===== 徽章 ===== */
+        .badge {
+            font-weight: 500;
+            font-size: 11px;
+            border-radius: 4px;
+            padding: 3px 7px;
+        }
+
+        /* ===== 表单 ===== */
+        .form-control, .form-select {
+            border-color: var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--text-body);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(22,119,255,.1);
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-body);
+            margin-bottom: 5px;
+        }
+
+        .form-text { font-size: 12px; color: var(--text-muted); }
+
+        /* ===== 进度条 ===== */
+        .progress-container { display: none; }
+
+        .progress {
+            height: 8px;
+            border-radius: 100px;
+            background: var(--bg-page);
+            border: 1px solid var(--border-light);
+        }
+
+        .progress-bar {
+            border-radius: 100px;
+            background: var(--primary);
+            transition: width .4s ease;
+        }
+
+        /* ===== 自动补全 ===== */
+        .autocomplete-dropdown {
+            position: absolute;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 2px;
+            top: 100%;
+            left: 0;
+            min-width: 220px;
+        }
+
+        .autocomplete-item {
+            padding: 9px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-light);
+            transition: background .15s;
+            font-size: 13px;
+        }
+
+        .autocomplete-item:last-child { border-bottom: none; }
+
+        .autocomplete-item:hover { background: var(--primary-light) !important; }
+
+        .autocomplete-item strong {
+            color: var(--primary);
+            margin-right: 6px;
+            font-weight: 600;
+        }
+
+        /* ===== 可排序列头 ===== */
+        .sortable-th {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .sortable-th::after       { content: ' ⇅'; opacity: .35; font-size: .8em; }
+        .sortable-th.sort-asc::after  { content: ' ↑'; opacity: 1; }
+        .sortable-th.sort-desc::after { content: ' ↓'; opacity: 1; }
+
+        /* ===== 模态框优化 ===== */
+        .modal-content {
+            border-radius: var(--radius-lg);
+            border: none;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-light);
+            padding: 16px 20px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--border-light);
+            padding: 12px 20px;
+        }
+
+        /* ===== 加载/空状态 ===== */
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        /* ===== 移动端 ===== */
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                box-shadow: var(--shadow-lg);
+            }
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            #main-area {
+                margin-left: 0;
+            }
+            #page-content {
+                padding: 16px;
+            }
+            #mobile-menu-btn {
+                display: block;
+            }
+            .table th, .table td {
+                font-size: 12px;
+                padding: 7px 8px;
+            }
+            .btn { font-size: 12px; padding: .3rem .6rem; }
+            .btn-group { flex-wrap: wrap; gap: 4px; }
+            .btn-group .btn { border-radius: var(--radius-sm) !important; }
+            .row.mb-3 > [class*="col-md-"] { margin-bottom: .5rem; }
+        }
+
+        /* 侧边栏遮罩 */
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.3);
+            z-index: 199;
+        }
+        #sidebar-overlay.active { display: block; }
+
+        /* btn-xs utility */
+        .btn-xs { padding: 2px 6px; font-size: 0.75rem; }
+
+        /* 进度统计网格 */
+        .progress-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .progress-stat {
+            text-align: center;
+            padding: 12px;
+            background: var(--bg-page);
+            border-radius: 10px;
+        }
+        .progress-stat-label { font-size: 0.75rem; color: #6b7280; margin-bottom: 4px; }
+        .progress-stat-value { font-size: 1.1rem; font-weight: 700; color: #374151; }
+    </style>
+</head>
+<body>
+    <!-- ===== 主应用（登录后） ===== -->
+    <div id="main-content" style="display: flex;">
+
+        <!-- 侧边栏遮罩（移动端） -->
+        <div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+        <!-- 侧边栏 -->
+        <div id="sidebar">
+            <div class="sidebar-brand">
+                <i class="bi bi-graph-up brand-icon"></i>
+                <span class="brand-name">涌金阁</span>
+            </div>
+
+            <ul class="navbar-nav">
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showTab('help', this); return false;">
+                        <i class="bi bi-book"></i><span>使用指南</span>
+                    </a>
+                </li>
+
+                <div class="nav-divider"></div>
+
+                <!-- 数据看板（可折叠，默认展开） -->
+                <li class="nav-item nav-parent open">
+                    <a class="nav-link nav-group-title" href="#" onclick="toggleNavSubmenu(this); return false;">
+                        <i class="bi bi-speedometer2"></i><span>数据看板</span>
+                        <i class="bi bi-chevron-down nav-arrow"></i>
+                    </a>
+                    <ul class="nav-submenu">
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('dashboard', this); return false;">
+                                <i class="bi bi-speedometer2"></i><span>数据概览</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 分析工具（可折叠，默认展开） -->
+                <li class="nav-item nav-parent open">
+                    <a class="nav-link nav-group-title" href="#" onclick="toggleNavSubmenu(this); return false;">
+                        <i class="bi bi-tools"></i><span>分析工具</span>
+                        <i class="bi bi-chevron-down nav-arrow"></i>
+                    </a>
+                    <ul class="nav-submenu">
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('stock-analysis', this); return false;">
+                                <i class="bi bi-graph-up-arrow"></i><span>单股分析</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('month-filter', this); return false;">
+                                <i class="bi bi-calendar-month"></i><span>月榜单</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('month-enhanced', this); return false;">
+                                <i class="bi bi-stars"></i><span>月榜单增强</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('industry-analysis', this); return false;">
+                                <i class="bi bi-building"></i><span>行业分析</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('industry-enhanced', this); return false;">
+                                <i class="bi bi-graph-up"></i><span>行业增强分析</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('source-compare', this); return false;">
+                                <i class="bi bi-arrow-left-right"></i><span>数据校对</span><span class="plan-badge-pro">专业</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 套利工具（可折叠，按权限显示） -->
+                <li class="nav-item nav-parent open lof-arbitrage-nav" id="nav-section-lof" style="display:none">
+                    <a class="nav-link nav-group-title" href="#" onclick="toggleNavSubmenu(this); return false;">
+                        <i class="bi bi-currency-exchange"></i><span>套利工具</span>
+                        <i class="bi bi-chevron-down nav-arrow"></i>
+                    </a>
+                    <ul class="nav-submenu">
+                        <li id="nav-item-lof">
+                            <a class="nav-link" href="#" onclick="showTab('lof-arbitrage', this); return false;">
+                                <i class="bi bi-currency-exchange"></i><span>LOF基金套利</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <div class="nav-divider"></div>
+
+                <!-- 系统配置（管理员，可折叠） -->
+                <li class="nav-item nav-parent admin-only" style="display: none;">
+                    <a class="nav-link nav-group-title" href="#" onclick="toggleNavSubmenu(this); return false;">
+                        <i class="bi bi-gear"></i><span>系统配置</span>
+                        <i class="bi bi-chevron-down nav-arrow"></i>
+                    </a>
+                    <ul class="nav-submenu">
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('config', this); return false;">
+                                <i class="bi bi-sliders"></i><span>数据源 & 更新</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" onclick="showTab('config-lof-db', this); return false;">
+                                <i class="bi bi-database"></i><span>LOF数据库管理</span>
+                            </a>
+                        </li>
+
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <i class="bi bi-graph-up" style="font-size:16px; color:var(--text-muted); flex-shrink:0;"></i>
+                <span style="color:var(--text-muted);font-size:13px;">涌金阁桌面版</span>
+            </div>
+        </div>
+
+        <!-- 主区域 -->
+        <div id="main-area">
+            <!-- 顶栏 -->
+            <div id="topbar">
+                <button id="mobile-menu-btn" onclick="toggleMobileSidebar()">
+                    <i class="bi bi-list"></i>
+                </button>
+                <span id="topbar-title">数据概览</span>
+            </div>
+
+            <!-- 页面内容 -->
+            <div id="page-content">
+
+                <!-- ===== 首页 Dashboard ===== -->
+                <div id="dashboard" class="tab-content">
+
+                    <!-- 顶部标题栏 -->
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i>数据概览</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="refreshDashboard()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                    </div>
+
+                    <!-- 快捷入口 -->
+                    <div class="card mb-3">
+                        <div class="card-body py-3">
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <span class="text-muted small me-1">快速进入：</span>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showTab('stock-analysis', null)">
+                                    <i class="bi bi-graph-up-arrow me-1"></i>单股分析
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showTab('month-filter', null)">
+                                    <i class="bi bi-calendar-month me-1"></i>月榜单
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showTab('month-enhanced', null)">
+                                    <i class="bi bi-stars me-1"></i>月榜单增强
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showTab('industry-analysis', null)">
+                                    <i class="bi bi-building me-1"></i>行业分析
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showTab('industry-enhanced', null)">
+                                    <i class="bi bi-graph-up me-1"></i>行业增强分析
+                                </button>
+                                <button id="dash-lof-shortcut" class="btn btn-sm btn-outline-success" onclick="showTab('lof-arbitrage', null)" style="display:none">
+                                    <i class="bi bi-currency-exchange me-1"></i>LOF套利
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 摘要（有数据管理权限才渲染） -->
+                    <div id="dash-kpi" class="row g-3 mb-3"></div>
+
+                    <!-- 数据完整度 -->
+                    <div class="card mb-3" id="dash-completeness-card" style="display:none">
+                        <div class="card-header py-2 d-flex align-items-center gap-3 flex-wrap">
+                            <h6 class="mb-0"><i class="bi bi-check2-circle text-success me-2"></i>数据完整度</h6>
+                            <span id="dash-ref-sync-info" class="text-muted small"></span>
+                            <button id="dash-sync-btn" class="btn btn-sm btn-outline-primary ms-auto admin-only" style="display:none" onclick="syncReferenceCountsFromDataSource()">
+                                <i class="bi bi-arrow-repeat me-1"></i>从数据源同步参考总数
+                            </button>
+                        </div>
+                        <div class="card-body p-0" id="dash-completeness"></div>
+                    </div>
+
+                    <!-- 数据更新提示 -->
+                    <div id="dash-update-tip" class="mb-3"></div>
+
+                    <!-- 市场覆盖 + 数据源状态 -->
+                    <div class="row g-3 mb-3" id="dash-detail-row" style="display:none">
+                        <div class="col-md-5">
+                            <div class="card h-100">
+                                <div class="card-header py-2">
+                                    <h6 class="mb-0"><i class="bi bi-globe text-info me-2"></i>各市场覆盖</h6>
+                                </div>
+                                <div class="card-body" id="dash-markets">
+                                    <div class="text-center text-muted small py-2">加载中...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="card h-100">
+                                <div class="card-header py-2">
+                                    <h6 class="mb-0"><i class="bi bi-hdd-stack text-info me-2"></i>数据源状态</h6>
+                                </div>
+                                <div class="card-body p-0" id="dash-sources">
+                                    <div class="text-center text-muted small py-3">加载中...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 行业分类状态 -->
+                    <div class="card mb-3" id="dash-industry-card" style="display:none">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-diagram-3 text-secondary me-2"></i>行业分类覆盖</h6>
+                        </div>
+                        <div class="card-body py-2" id="dash-industry">
+                            <div class="text-muted small">加载中...</div>
+                        </div>
+                    </div>
+
+                    <!-- LOF套利（有权限才显示） -->
+                    <div id="lof-dashboard-section" style="display:none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-bar-chart-line text-success me-2"></i>我的套利统计</h6>
+                                <a href="#" class="btn btn-sm btn-outline-success" onclick="showTab('lof-arbitrage', this); return false;">
+                                    进入套利 <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                            <div class="card-body">
+                                <div id="lof-stats-cards" class="row g-3">
+                                    <div class="col text-center"><div class="loading small">加载中...</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center gap-3 flex-wrap">
+                                <h6 class="mb-0"><i class="bi bi-lightning-charge text-warning me-2"></i>重点套利机会
+                                    <span id="lof-opp-total" class="badge bg-warning text-dark ms-1"></span>
+                                </h6>
+                                <div class="d-flex align-items-center gap-2 ms-auto">
+                                    <div class="input-group input-group-sm" style="width:160px;">
+                                        <span class="input-group-text">溢价率 ≥</span>
+                                        <input type="number" id="lof-opp-min-pct" class="form-control" value="10" min="0" step="1" onchange="loadLofOpportunities()">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="lof-opportunities-table">
+                                    <div class="p-3 text-center text-muted small">加载中...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ===== 单股分析 ===== -->
+                <div id="stock-analysis" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-graph-up-arrow text-primary me-2"></i>单股分析</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="stock-analysis-type" id="stock-single-month" value="single" checked>
+                                    <label class="btn btn-outline-primary" for="stock-single-month" onclick="stockAnalysisShowSingle()">单月统计</label>
+                                    <input type="radio" class="btn-check" name="stock-analysis-type" id="stock-multi-month" value="multi">
+                                    <label class="btn btn-outline-primary" for="stock-multi-month" onclick="stockAnalysisShowMulti()">多月统计</label>
+                                </div>
+                            </div>
+
+                            <!-- 单月统计 -->
+                            <div id="stock-single-month-form">
+                                <div class="row mb-3 g-3">
+                                    <div class="col-md-2" style="position:relative;">
+                                        <label class="form-label">市场</label>
+                                        <select class="form-select" id="stock-market">
+                                            <option value="">全部市场</option>
+                                            <option value="A">A股</option>
+                                            <option value="HK">港股</option>
+                                            <option value="US">美股</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2" style="position:relative;">
+                                        <label class="form-label">股票代码/名称</label>
+                                        <input type="text" class="form-control" id="stock-code" placeholder="输入代码或名称" autocomplete="off">
+                                        <div id="stock-autocomplete" class="autocomplete-dropdown" style="display:none;"></div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">月份</label>
+                                        <select class="form-select" id="stock-month">
+                                            <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                                            <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                                            <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                                            <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">起始年份</label>
+                                        <input type="number" class="form-control" id="stock-start-year" value="2000" min="2000" max="2030">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">结束年份</label>
+                                        <input type="number" class="form-control" id="stock-end-year" value="" min="2000" max="2030">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input" type="checkbox" id="stock-exclude-relisting">
+                                            <label class="form-check-label small" for="stock-exclude-relisting">过滤复牌异常月</label>
+                                        </div>
+                                        <button class="btn btn-primary w-100" onclick="analyzeStock()">
+                                            <i class="bi bi-search"></i> 查询
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 多月统计 -->
+                            <div id="stock-multi-month-form" style="display:none;">
+                                <div class="row mb-3 g-3">
+                                    <div class="col-md-2">
+                                        <label class="form-label">市场</label>
+                                        <select class="form-select" id="stock-multi-market">
+                                            <option value="">全部市场</option>
+                                            <option value="A">A股</option>
+                                            <option value="HK">港股</option>
+                                            <option value="US">美股</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2" style="position:relative;">
+                                        <label class="form-label">股票代码/名称</label>
+                                        <input type="text" class="form-control" id="stock-multi-code" placeholder="输入代码或名称" autocomplete="off">
+                                        <div id="stock-multi-autocomplete" class="autocomplete-dropdown" style="display:none;"></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">选择月份（可多选）</label>
+                                        <select class="form-select" id="stock-multi-months" multiple size="4">
+                                            <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                                            <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                                            <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                                            <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                                        </select>
+                                        <small class="form-text">按住 Ctrl/Cmd 可多选，不选则查询所有月份</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">起始年份</label>
+                                        <input type="number" class="form-control" id="stock-multi-start-year" value="2000" min="2000" max="2030">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">结束年份</label>
+                                        <input type="number" class="form-control" id="stock-multi-end-year" value="" min="2000" max="2030">
+                                    </div>
+                                </div>
+                                <div class="mb-3 d-flex align-items-center gap-3">
+                                    <button class="btn btn-primary" onclick="analyzeStockMultiMonth()">
+                                        <i class="bi bi-search"></i> 查询多月统计
+                                    </button>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="stock-multi-exclude-relisting">
+                                        <label class="form-check-label small" for="stock-multi-exclude-relisting">过滤复牌异常月</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="stock-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 月榜单 ===== -->
+                <div id="month-filter" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-calendar-month text-primary me-2"></i>月榜单</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3 g-3">
+                                <div class="col-md-2">
+                                    <label class="form-label">市场</label>
+                                    <select class="form-select" id="filter-market">
+                                        <option value="">全部市场</option>
+                                        <option value="A">A股</option>
+                                        <option value="HK">港股</option>
+                                        <option value="US">美股</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">月份</label>
+                                    <select class="form-select" id="filter-month">
+                                        <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                                        <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                                        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">起始年份</label>
+                                    <input type="number" class="form-control" id="filter-start-year" value="2000" min="2000" max="2030">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">结束年份</label>
+                                    <input type="number" class="form-control" id="filter-end-year" value="" min="2000" max="2030">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">显示数量</label>
+                                    <input type="number" class="form-control" id="filter-top-n" value="20" min="1" max="100">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">最小涨跌次数</label>
+                                    <input type="number" class="form-control" id="filter-min-count" value="0" min="0" placeholder="0表示不限制">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="filter-exclude-relisting">
+                                        <label class="form-check-label small" for="filter-exclude-relisting">过滤复牌异常月</label>
+                                    </div>
+                                    <button class="btn btn-primary w-100" onclick="filterByMonth()">
+                                        <i class="bi bi-search"></i> 查询
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="filter-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 行业分析 ===== -->
+                <div id="industry-analysis" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-building text-primary me-2"></i>行业分析</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3 g-3">
+                                <div class="col-md-2">
+                                    <label class="form-label">市场</label>
+                                    <select class="form-select" id="industry-market" onchange="loadIndustries()">
+                                        <option value="">全部市场</option>
+                                        <option value="A">A股</option>
+                                        <option value="HK">港股</option>
+                                        <option value="US">美股</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">行业分类</label>
+                                    <select class="form-select" id="industry-type" onchange="loadIndustries()">
+                                        <option value="sw">申万</option>
+                                        <option value="citics">中信</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">月份</label>
+                                    <select class="form-select" id="industry-month">
+                                        <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                                        <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                                        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">起始年份</label>
+                                    <input type="number" class="form-control" id="industry-start-year" value="2000" min="2000" max="2030">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">结束年份</label>
+                                    <input type="number" class="form-control" id="industry-end-year" value="" min="2000" max="2030">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="industry-exclude-relisting">
+                                        <label class="form-check-label small" for="industry-exclude-relisting">过滤复牌异常月</label>
+                                    </div>
+                                    <button class="btn btn-primary w-100" onclick="analyzeIndustry()">
+                                        <i class="bi bi-search"></i> 查询行业统计
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mb-3 g-3">
+                                <div class="col-md-2">
+                                    <label class="form-label">市场</label>
+                                    <select class="form-select" id="industry-top-market">
+                                        <option value="">全部市场</option>
+                                        <option value="A">A股</option>
+                                        <option value="HK">港股</option>
+                                        <option value="US">美股</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">选择行业</label>
+                                    <select class="form-select" id="industry-select">
+                                        <option value="">请先查询行业统计</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">显示数量</label>
+                                    <input type="number" class="form-control" id="industry-top-n" value="20" min="1" max="100">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button class="btn btn-success w-100" onclick="getIndustryTopStocks()">
+                                        <i class="bi bi-trophy"></i> 查询行业前20支股票
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="industry-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 行业增强分析 ===== -->
+                <div id="industry-enhanced" class="tab-content" style="display:none">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-graph-up text-primary me-2"></i>行业增强分析</h5>
+                            <small class="text-muted">以年为单位聚合行业表现，综合期望收益率、跑赢大盘概率与近5年一致性</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3 g-3 align-items-end">
+                                <div class="col-md-2">
+                                    <label class="form-label">市场</label>
+                                    <select class="form-select" id="enhanced-market">
+                                        <option value="">全部市场</option>
+                                        <option value="A">A股</option>
+                                        <option value="HK">港股</option>
+                                        <option value="US">美股</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">行业分类</label>
+                                    <select class="form-select" id="enhanced-industry-type">
+                                        <option value="sw">申万</option>
+                                        <option value="citics">中信</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">月份</label>
+                                    <select class="form-select" id="enhanced-month">
+                                        <option value="1">1月</option><option value="2">2月</option>
+                                        <option value="3">3月</option><option value="4">4月</option>
+                                        <option value="5">5月</option><option value="6">6月</option>
+                                        <option value="7">7月</option><option value="8">8月</option>
+                                        <option value="9">9月</option><option value="10">10月</option>
+                                        <option value="11">11月</option><option value="12">12月</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">起始年份</label>
+                                    <input type="number" class="form-control" id="enhanced-start-year" value="2000" min="1990" max="2099">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">结束年份</label>
+                                    <input type="number" class="form-control" id="enhanced-end-year" placeholder="当前年">
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-primary" onclick="analyzeEnhancedIndustry()">
+                                        <i class="bi bi-search"></i> 查询
+                                    </button>
+                                    <small class="text-muted ms-2">数据量大时耗时较长</small>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" id="enhanced-exclude-relisting">
+                                        <label class="form-check-label small" for="enhanced-exclude-relisting">过滤复牌异常月</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 指标说明 -->
+                            <div class="alert alert-light py-2 mb-3 small">
+                                <strong>指标说明：</strong>
+                                <span class="me-3">📈 <b>期望收益率</b> = 历年行业月均涨幅的平均值（含涨含跌）</span>
+                                <span class="me-3">🎯 <b>跑赢大盘概率</b> = 该行业月均涨幅超过全市场均值的年份占比</span>
+                                <span>🔁 <b>一致性</b> = 近5年上涨率与全历史偏差越小越稳定（100=完全一致）</span>
+                            </div>
+
+                            <!-- 排序控制 -->
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <label class="form-label mb-0">排序依据：</label>
+                                <select class="form-select form-select-sm w-auto" id="enhanced-sort-key" onchange="sortEnhancedTable()">
+                                    <option value="expected_return">期望收益率</option>
+                                    <option value="up_probability">上涨概率</option>
+                                    <option value="excess_market_prob">跑赢大盘概率</option>
+                                    <option value="recent_up_prob">近5年上涨率</option>
+                                    <option value="consistency">一致性</option>
+                                </select>
+                                <select class="form-select form-select-sm w-auto" id="enhanced-sort-dir" onchange="sortEnhancedTable()">
+                                    <option value="desc">降序</option>
+                                    <option value="asc">升序</option>
+                                </select>
+                            </div>
+
+                            <div id="enhanced-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 月榜单增强 ===== -->
+                <div id="month-enhanced" class="tab-content" style="display:none">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-stars text-primary me-2"></i>月榜单增强</h5>
+                            <small class="text-muted">以年为单位聚合个股表现，综合期望收益率、跑赢大盘概率与近5年一致性，精选最佳个股</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3 g-3 align-items-end">
+                                <div class="col-md-2">
+                                    <label class="form-label">市场</label>
+                                    <select class="form-select" id="menhanced-market">
+                                        <option value="">全部市场</option>
+                                        <option value="A">A股</option>
+                                        <option value="HK">港股</option>
+                                        <option value="US">美股</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">月份</label>
+                                    <select class="form-select" id="menhanced-month">
+                                        <option value="1">1月</option><option value="2">2月</option>
+                                        <option value="3">3月</option><option value="4">4月</option>
+                                        <option value="5">5月</option><option value="6">6月</option>
+                                        <option value="7">7月</option><option value="8">8月</option>
+                                        <option value="9">9月</option><option value="10">10月</option>
+                                        <option value="11">11月</option><option value="12">12月</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">起始年份</label>
+                                    <input type="number" class="form-control" id="menhanced-start-year" value="2000" min="1990" max="2099">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">结束年份</label>
+                                    <input type="number" class="form-control" id="menhanced-end-year" placeholder="当前年">
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">最少年数</label>
+                                    <input type="number" class="form-control" id="menhanced-min-years" value="3" min="1" max="30" title="至少有N年数据的股票才纳入统计">
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">显示条数</label>
+                                    <select class="form-select" id="menhanced-top-n">
+                                        <option value="50">前50</option>
+                                        <option value="100">前100</option>
+                                        <option value="200">前200</option>
+                                        <option value="0">全部</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-primary" onclick="analyzeEnhancedMonth()">
+                                        <i class="bi bi-search"></i> 查询
+                                    </button>
+                                    <small class="text-muted ms-2">数据量大时耗时较长</small>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" id="menhanced-exclude-relisting">
+                                        <label class="form-check-label small" for="menhanced-exclude-relisting">过滤复牌异常月</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 指标说明 -->
+                            <div class="alert alert-light py-2 mb-3 small">
+                                <strong>指标说明：</strong>
+                                <span class="me-3">📈 <b>期望收益率</b> = 历年该月涨幅的平均值（含涨含跌）</span>
+                                <span class="me-3">🎯 <b>跑赢大盘概率</b> = 该股该月涨幅超过全市场均值的年份占比</span>
+                                <span class="me-3">🔁 <b>一致性</b> = 近5年上涨率与全历史偏差越小越稳定（100=完全一致）</span>
+                                <span>⚡ <b>最大涨幅/最大跌幅</b> = 历史该月单年极值</span>
+                            </div>
+
+                            <!-- 排序控制 -->
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <label class="form-label mb-0">排序依据：</label>
+                                <select class="form-select form-select-sm w-auto" id="menhanced-sort-key" onchange="sortEnhancedMonthTable()">
+                                    <option value="expected_return">期望收益率</option>
+                                    <option value="up_probability">上涨概率</option>
+                                    <option value="excess_market_prob">跑赢大盘概率</option>
+                                    <option value="recent_up_prob">近5年上涨率</option>
+                                    <option value="consistency">一致性</option>
+                                    <option value="avg_up_return">平均涨幅</option>
+                                    <option value="max_up">最大涨幅</option>
+                                </select>
+                                <select class="form-select form-select-sm w-auto" id="menhanced-sort-dir" onchange="sortEnhancedMonthTable()">
+                                    <option value="desc">降序</option>
+                                    <option value="asc">升序</option>
+                                </select>
+                            </div>
+
+                            <div id="menhanced-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 数据校对 ===== -->
+                <div id="source-compare" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-arrow-left-right text-primary me-2"></i>数据校对</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3 g-3">
+                                <div class="col-md-3" style="position:relative;">
+                                    <label class="form-label">股票代码/名称</label>
+                                    <input type="text" class="form-control" id="compare-code" placeholder="输入代码或名称" autocomplete="off">
+                                    <div id="compare-autocomplete" class="autocomplete-dropdown" style="display:none;"></div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">年份</label>
+                                    <input type="number" class="form-control" id="compare-year" value="2024" min="2000">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">月份</label>
+                                    <select class="form-select" id="compare-month">
+                                        <option value="">全部</option>
+                                        <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                                        <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                                        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">日期</label>
+                                    <input type="text" class="form-control" id="compare-date" placeholder="如: 20240131（可选）">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button class="btn btn-primary w-100" onclick="compareDataSources()">
+                                        <i class="bi bi-arrow-left-right"></i> 对比数据源
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="compare-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 系统配置（仅管理员） ===== -->
+                <div id="config" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-gear text-primary me-2"></i>系统配置</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="config-form">
+                                <div class="row g-3 mb-3">
+                                    <!-- A股 -->
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-header"><h6>🇨🇳 A股数据源</h6></div>
+                                            <div class="card-body">
+                                                <select class="form-select mb-2" id="config-source-a" onchange="onDataSourceChange()">
+                                                    <option value="akshare">akshare（推荐，免费）</option>
+                                                    <option value="tushare">Tushare Pro（需积分）</option>
+                                                    <option value="baostock">BaoStock（免费）</option>
+                                                    <option value="jqdata">聚宽 JQData（需账号）</option>
+                                                </select>
+                                                <div id="cred-tushare-a" class="cred-block" style="display:none">
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control" id="config-tushare-token" placeholder="Tushare Token">
+                                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleTokenVisibility('config-tushare-token', this)" tabindex="-1"><i class="bi bi-eye"></i></button>
+                                                    </div>
+                                                </div>
+                                                <div id="cred-jqdata" class="cred-block" style="display:none">
+                                                    <div class="row g-2">
+                                                        <div class="col"><input type="text" class="form-control" id="config-jqdata-username" placeholder="聚宽用户名（手机号）"></div>
+                                                        <div class="col"><input type="password" class="form-control" id="config-jqdata-password" placeholder="聚宽密码"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 港股 -->
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-header"><h6>🇭🇰 港股数据源</h6></div>
+                                            <div class="card-body">
+                                                <select class="form-select mb-2" id="config-source-hk" onchange="onDataSourceChange()">
+                                                    <option value="yfinance">yfinance（免费，覆盖约900只）</option>
+                                                    <option value="akshare">akshare（推荐，免费，覆盖全量）</option>
+                                                    <option value="tushare">Tushare Pro（需积分）</option>
+                                                </select>
+                                                <div id="cred-tushare-hk" class="cred-block" style="display:none">
+                                                    <div class="alert alert-info py-1 px-2 mb-0 small">
+                                                        <i class="bi bi-link-45deg"></i> 港股与A股共用同一个 Token，请在 <strong>A股数据源</strong> 处配置
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 美股 -->
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-header"><h6>🇺🇸 美股数据源</h6></div>
+                                            <div class="card-body">
+                                                <select class="form-select mb-2" id="config-source-us" onchange="onDataSourceChange()">
+                                                    <option value="yfinance">yfinance（推荐，免费）</option>
+                                                    <option value="tushare">Tushare Pro（股票列表，K线用yfinance）</option>
+                                                    <option value="alpha_vantage">Alpha Vantage（需API Key）</option>
+                                                </select>
+                                                <div id="cred-alpha-vantage" class="cred-block" style="display:none">
+                                                    <div class="input-group mb-1">
+                                                        <input type="password" class="form-control" id="config-av-apikey" placeholder="Alpha Vantage API Key">
+                                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleTokenVisibility('config-av-apikey', this)" tabindex="-1"><i class="bi bi-eye"></i></button>
+                                                    </div>
+                                                    <div class="form-text text-muted small">免费版：25次/天；Premium（$50/月）：75次/分钟。<br>高速率可在 config.json 设置 <code>alpha_vantage.requests_per_minute</code>。</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 网络代理 -->
+                                <div class="card mb-3">
+                                    <div class="card-header d-flex align-items-center justify-content-between">
+                                        <h6 class="mb-0">🌐 网络代理（海外数据源）</h6>
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="config-proxy-enabled" onchange="onProxyToggle()">
+                                            <label class="form-check-label small" for="config-proxy-enabled">启用代理</label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="proxy-settings" style="display:none">
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">HTTP 代理</label>
+                                            <input type="text" class="form-control form-control-sm" id="config-proxy-http" placeholder="http://127.0.0.1:7890">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">HTTPS 代理</label>
+                                            <input type="text" class="form-control form-control-sm" id="config-proxy-https" placeholder="http://127.0.0.1:7890">
+                                        </div>
+                                        <div class="form-text text-muted small">
+                                            <i class="bi bi-info-circle"></i> 代理仅用于 yfinance（Yahoo Finance），A股/港股国内接口不受影响。格式示例：<code>http://127.0.0.1:7890</code>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2 mb-0">
+                                    <button type="button" class="btn btn-primary" onclick="saveConfig()">
+                                        <i class="bi bi-check-lg"></i> 保存配置
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="loadConfig()">
+                                        <i class="bi bi-arrow-clockwise"></i> 重新加载
+                                    </button>
+                                </div>
+                            </form>
+
+                            <hr class="my-4">
+
+                            <!-- 股票数据导出 / 导入 -->
+                            <h6 class="mb-3"><i class="bi bi-box-arrow-up-right text-success me-2"></i>股票数据备份 / 还原</h6>
+                            <div class="card mb-4 border-success">
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">将股票列表和K线数据导出为压缩文件，可在其他服务器上直接导入，无需重新联网更新。</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <div class="fw-semibold small mb-2"><i class="bi bi-download me-1"></i>导出备份</div>
+                                            <div class="d-flex gap-2 align-items-center">
+                                                <select class="form-select form-select-sm" id="kline-export-market" style="width:auto">
+                                                    <option value="">全部市场</option>
+                                                    <option value="A">A股</option>
+                                                    <option value="HK">港股</option>
+                                                    <option value="US">美股</option>
+                                                </select>
+                                                <button class="btn btn-success btn-sm" onclick="klineExport()">
+                                                    <i class="bi bi-cloud-download me-1"></i>下载
+                                                </button>
+                                            </div>
+                                            <div class="form-text text-muted mt-1">导出格式：<code>.db.gz</code></div>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <div class="fw-semibold small mb-2"><i class="bi bi-upload me-1"></i>导入还原</div>
+                                            <div class="d-flex gap-2 mb-2 align-items-center">
+                                                <input type="file" class="form-control form-control-sm" id="kline-import-file" accept=".gz" style="max-width:240px">
+                                                <select class="form-select form-select-sm" id="kline-import-market" style="width:auto">
+                                                    <option value="">全部市场</option>
+                                                    <option value="A">A股</option>
+                                                    <option value="HK">港股</option>
+                                                    <option value="US">美股</option>
+                                                </select>
+                                            </div>
+                                            <div class="d-flex gap-3 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="kline-import-mode" id="kline-mode-merge" value="merge" checked>
+                                                    <label class="form-check-label small" for="kline-mode-merge"><strong>合并</strong>（补充缺失）</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="kline-import-mode" id="kline-mode-replace" value="replace">
+                                                    <label class="form-check-label small" for="kline-mode-replace"><strong>全量替换</strong>（清空同市场后导入）</label>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-warning btn-sm" onclick="klineImport()">
+                                                <i class="bi bi-cloud-upload me-1"></i>上传并还原
+                                            </button>
+                                            <div id="kline-import-result" class="mt-2"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <!-- 数据更新操作 -->
+                            <h6 class="mb-3"><i class="bi bi-cloud-download text-primary me-2"></i>数据更新操作</h6>
+
+                            <!-- 更新市场 -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">更新市场</label>
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="updateMarket" id="updateMarketAll" value="" checked>
+                                    <label class="btn btn-outline-primary" for="updateMarketAll">全部</label>
+                                    <input type="radio" class="btn-check" name="updateMarket" id="updateMarketA" value="A">
+                                    <label class="btn btn-outline-primary" for="updateMarketA">A股</label>
+                                    <input type="radio" class="btn-check" name="updateMarket" id="updateMarketHK" value="HK">
+                                    <label class="btn btn-outline-primary" for="updateMarketHK">港股</label>
+                                    <input type="radio" class="btn-check" name="updateMarket" id="updateMarketUS" value="US">
+                                    <label class="btn btn-outline-primary" for="updateMarketUS">美股</label>
+                                </div>
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="d-flex flex-wrap gap-2 mb-2" id="update-action-buttons">
+                                <button id="btn-incremental-update" class="btn btn-primary" onclick="updateData('incremental')">
+                                    <i class="bi bi-cloud-plus"></i> 增量更新
+                                </button>
+                                <button id="btn-rebuild-update" class="btn btn-danger" onclick="updateData('rebuild')">
+                                    <i class="bi bi-cloud-download"></i> 全量重建
+                                </button>
+                                <button id="btn-test-update" class="btn btn-info text-white" onclick="testUpdateData()">
+                                    <i class="bi bi-beaker"></i> 测试更新（10条）
+                                </button>
+                                <button id="btn-industry-update" class="btn btn-warning" onclick="updateIndustryClassification()">
+                                    <i class="bi bi-building"></i> 更新行业分类
+                                </button>
+                            </div>
+                            <div class="form-text mb-2">
+                                <strong>增量更新：</strong>只补充缺失数据，不影响已有数据，支持断点续更（推荐）&nbsp;|&nbsp;
+                                <strong>全量重建：</strong>清空选中市场全部K线后重新获取（<span class="text-danger">不可恢复，耗时较长</span>，适合切换数据源后使用）
+                            </div>
+
+                            <!-- 运行中控制按钮（更新启动后显示） -->
+                            <div class="d-flex flex-wrap gap-2 mb-2" id="update-control-buttons" style="display:none">
+                                <button id="btn-pause-update" class="btn btn-warning btn-sm" onclick="pauseUpdate()">
+                                    <i class="bi bi-pause-fill"></i> 暂停
+                                </button>
+                                <button id="btn-resume-update" class="btn btn-success btn-sm" onclick="resumeUpdate()" style="display:none">
+                                    <i class="bi bi-play-fill"></i> 继续
+                                </button>
+                                <button id="btn-stop-update" class="btn btn-danger btn-sm" onclick="stopUpdate()">
+                                    <i class="bi bi-stop-fill"></i> 停止并保存断点
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="resetUpdateState()">
+                                    <i class="bi bi-arrow-counterclockwise"></i> 强制重置
+                                </button>
+                            </div>
+                            <!-- 状态正常时也显示重置按钮（处理卡死场景） -->
+                            <div id="update-reset-row" class="mb-2">
+                                <button class="btn btn-outline-secondary btn-sm" onclick="resetUpdateState()">
+                                    <i class="bi bi-arrow-counterclockwise"></i> 强制重置状态
+                                </button>
+                                <span class="text-muted small ms-2">若进度卡住无法启动新更新时使用</span>
+                            </div>
+
+                            <div class="form-text mb-3">
+                                <i class="bi bi-info-circle"></i>
+                                测试更新只更新前10条股票数据；行业分类不更新K线，港股/美股依赖 yfinance 逐只请求耗时较长
+                            </div>
+                            <div class="progress-container" id="update-progress-container">
+                                <div class="progress mb-2" style="height:10px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" id="update-progress-bar" style="width:0%"></div>
+                                </div>
+                                <p id="update-progress-message" class="mb-1 small text-secondary"></p>
+                                <div id="update-progress-log" class="small text-muted border rounded p-2" style="max-height:120px;overflow-y:auto;display:none;background:#f8f9fa;font-family:monospace;font-size:0.75rem;"></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== LOF数据库管理（仅管理员） ===== -->
+                <div id="config-lof-db" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-database text-primary me-2"></i>LOF基金套利 数据库管理</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">备份或还原 LOF套利子系统的 SQLite 数据库，包含套利记录、收藏基金、通知数据等。还原操作会在覆盖前自动保留原数据库副本。</p>
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <button class="btn btn-success" onclick="lofBackupDatabase()">
+                                    <i class="bi bi-download me-1"></i> 备份数据库
+                                </button>
+                                <button class="btn btn-warning" onclick="document.getElementById('lof-restore-file').click()">
+                                    <i class="bi bi-upload me-1"></i> 还原数据库
+                                </button>
+                                <input type="file" id="lof-restore-file" accept=".zip" style="display:none" onchange="lofRestoreDatabase(this)">
+                            </div>
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                备份文件为 <code>.zip</code> 格式；还原时请选择之前导出的备份文件。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+                <!-- ===== 使用指南 ===== -->
+                <div id="help" class="tab-content" style="display:none">
+                  <div class="row g-0" style="min-height:80vh">
+
+                    <!-- 左侧目录 -->
+                    <div class="col-auto" style="width:200px;flex-shrink:0">
+                      <div class="card border-0 h-100" style="border-right:1px solid var(--border-color)!important;border-radius:0;position:sticky;top:0">
+                        <div class="card-body p-3">
+                          <div class="fw-bold text-muted small mb-3 text-uppercase" style="letter-spacing:.05em">目录</div>
+                          <nav id="help-toc" class="d-flex flex-column gap-1" style="font-size:.875rem">
+                            <a class="help-toc-link active" href="#help-start" onclick="helpScrollTo('help-start',this)">🚀 快速开始</a>
+                            <a class="help-toc-link" href="#help-concepts" onclick="helpScrollTo('help-concepts',this)">📌 核心概念</a>
+                            <a class="help-toc-link" href="#help-data-mgmt" onclick="helpScrollTo('help-data-mgmt',this)">🗄️ 数据管理</a>
+                            <div class="text-muted small mt-2 mb-1 fw-semibold">功能详解</div>
+                            <a class="help-toc-link ps-2" href="#help-stock" onclick="helpScrollTo('help-stock',this)">单股分析</a>
+                            <a class="help-toc-link ps-2" href="#help-filter" onclick="helpScrollTo('help-filter',this)">月榜单</a>
+                            <a class="help-toc-link ps-2" href="#help-filter-enhanced" onclick="helpScrollTo('help-filter-enhanced',this)">月榜单增强</a>
+                            <a class="help-toc-link ps-2" href="#help-industry" onclick="helpScrollTo('help-industry',this)">行业分析</a>
+                            <a class="help-toc-link ps-2" href="#help-industry-enhanced" onclick="helpScrollTo('help-industry-enhanced',this)">行业增强分析</a>
+                            <a class="help-toc-link ps-2" href="#help-compare" onclick="helpScrollTo('help-compare',this)">数据校对</a>
+                            <a class="help-toc-link ps-2" href="#help-lof" onclick="helpScrollTo('help-lof',this)">LOF基金套利</a>
+                            <a class="help-toc-link mt-2" href="#help-formulas" onclick="helpScrollTo('help-formulas',this)">📐 指标公式大全</a>
+                            <a class="help-toc-link" href="#help-tips" onclick="helpScrollTo('help-tips',this)">⚠️ 注意事项</a>
+                          </nav>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 右侧内容 -->
+                    <div class="col" style="overflow-y:auto;max-height:calc(100vh - var(--topbar-h) - 10px)">
+                      <div class="p-4" style="max-width:860px" id="help-body">
+
+                        <!-- 快速开始 -->
+                        <section id="help-start" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-rocket-takeoff text-primary me-2"></i>快速开始</h4>
+                          <p class="text-muted">首次使用建议按以下流程操作，5分钟内即可看到分析结果。</p>
+                          <div class="row g-3">
+                            <div class="col-md-4">
+                              <div class="help-step-card">
+                                <div class="help-step-num">1</div>
+                                <div class="fw-semibold mb-1">配置数据源</div>
+                                <div class="text-muted small">前往 <b>数据管理→数据源配置</b>。<b>A股/港股</b>默认选 akshare（免费，无需注册）；<b>美股</b>选 yfinance（免费）。</div>
+                              </div>
+                            </div>
+                            <div class="col-md-4">
+                              <div class="help-step-card">
+                                <div class="help-step-num">2</div>
+                                <div class="fw-semibold mb-1">更新股票数据</div>
+                                <div class="text-muted small">点击 <b>更新所有股票数据</b>，系统会自动拉取月K线数据。数据量大时需等待数分钟。</div>
+                              </div>
+                            </div>
+                            <div class="col-md-4">
+                              <div class="help-step-card">
+                                <div class="help-step-num">3</div>
+                                <div class="fw-semibold mb-1">开始分析</div>
+                                <div class="text-muted small">数据就绪后，选择任意功能模块，设置月份和年份范围，点击查询即可。</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="alert alert-info mt-3 small">
+                            <i class="bi bi-lightbulb me-1"></i>
+                            <b>建议年份范围：</b>起始年 2000 ~ 2005，结束年选当前年，样本越多统计规律越可靠。最少需要 3 年数据。
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 核心概念 -->
+                        <section id="help-concepts" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-pin-angle text-primary me-2"></i>核心概念</h4>
+
+                          <h6 class="fw-bold mt-3">月K线涨跌幅（pct_chg）</h6>
+                          <p class="text-muted small">系统使用<b>月K线</b>数据进行统计，即每个月的开盘价到收盘价的涨跌幅。例如某股票 2024年1月的月K涨幅为 +8.5%，表示该月从月初到月末上涨了 8.5%。</p>
+
+                          <h6 class="fw-bold mt-3">数据源</h6>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>数据源</th><th>适用市场</th><th>费用</th><th>说明</th></tr></thead>
+                            <tbody>
+                              <tr><td><b>akshare</b> <span class="badge bg-success">推荐</span></td><td>A股、港股</td><td>免费</td><td>东方财富接口，无需注册。港股覆盖全量 2700+ 只</td></tr>
+                              <tr><td><b>BaoStock</b></td><td>A股</td><td>免费</td><td>证券宝，稳定；北交所股票自动降级至 akshare</td></tr>
+                              <tr><td><b>Tushare Pro</b></td><td>A股、港股</td><td>需积分</td><td>数据质量高，需在 tushare.pro 注册并填入 Token</td></tr>
+                              <tr><td><b>JQData</b></td><td>A股</td><td>需账号</td><td>聚宽数据，需填入手机号和密码</td></tr>
+                              <tr><td><b>yfinance</b> <span class="badge bg-success">推荐</span></td><td>港股、美股</td><td>免费</td><td>覆盖主流美股 8000+；港股仅覆盖约 900 只知名蓝筹</td></tr>
+                              <tr><td><b>Alpha Vantage</b></td><td>美股</td><td>需 API Key</td><td>复权收盘价数据；免费版 25 次/天（仅供测试）；Premium 75 次/分钟</td></tr>
+                            </tbody>
+                          </table>
+                          <div class="alert alert-warning small py-2 mt-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            <b>港股建议：</b>使用 akshare 可覆盖全量 2700+ 只港股；yfinance 仅覆盖约 900 只（33%），小型港股无数据。
+                          </div>
+
+                          <h6 class="fw-bold mt-3">市场代码</h6>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>代码</th><th>市场</th><th>示例股票代码格式</th></tr></thead>
+                            <tbody>
+                              <tr><td><span class="badge bg-primary">A</span></td><td>A股（沪深）</td><td>000001.SZ、600519.SH</td></tr>
+                              <tr><td><span class="badge bg-danger">HK</span></td><td>港股</td><td>00700.HK、09988.HK</td></tr>
+                              <tr><td><span class="badge bg-success">US</span></td><td>美股</td><td>AAPL、TSLA、MSFT</td></tr>
+                            </tbody>
+                          </table>
+
+                          <h6 class="fw-bold mt-3">行业分类体系</h6>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>分类</th><th>全称</th><th>适用</th></tr></thead>
+                            <tbody>
+                              <tr><td><b>申万（SW）</b></td><td>申万宏源行业分类</td><td>A股主流分类标准，覆盖完整</td></tr>
+                              <tr><td><b>中信（CITICS）</b></td><td>中信证券行业分类</td><td>另一套A股分类标准，颗粒度略有不同</td></tr>
+                            </tbody>
+                          </table>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 数据管理 -->
+                        <section id="help-data-mgmt" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-database text-primary me-2"></i>数据管理</h4>
+                          <p class="text-muted small">进入 <b>数据管理</b> 标签页可配置数据源、触发更新、查看数据状态。</p>
+
+                          <h6 class="fw-bold mt-3">更新模式</h6>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>模式</th><th>说明</th><th>适用场景</th></tr></thead>
+                            <tbody>
+                              <tr><td><b>增量更新</b></td><td>只补充上次更新后缺少的数据</td><td>日常每月执行一次</td></tr>
+                              <tr><td><b>全量重建</b></td><td>先清空当前数据源数据，再从头重新获取</td><td>切换数据源后、数据异常时</td></tr>
+                              <tr><td><b>测试更新</b></td><td>只更新前 10 只股票，验证配置是否正确</td><td>首次配置后验证</td></tr>
+                            </tbody>
+                          </table>
+
+                          <h6 class="fw-bold mt-3">市场选择</h6>
+                          <p class="text-muted small">可单独更新 A股 / 港股 / 美股，或选"全部"同时更新三个市场。首次建议先单独更新 A股，验证配置正常后再更新港美股。</p>
+
+                          <h6 class="fw-bold mt-3">断点续更</h6>
+                          <p class="text-muted small">更新过程中若中途断网或手动停止，下次勾选 <b>从断点继续</b> 即可从中断处恢复，不会重复下载已完成的股票。</p>
+
+                          <h6 class="fw-bold mt-3">行业分类更新</h6>
+                          <p class="text-muted small">行业分类不含在常规 K 线更新中，需单独点击 <b>更新行业分类</b>：A股更新较快（约 1 分钟）；港股/美股通过 yfinance 逐只获取，耗时较长。</p>
+
+                          <div class="alert alert-info small py-2 mt-2">
+                            <i class="bi bi-lightbulb me-1"></i>
+                            多数据源数据可以共存：系统按 <code>(股票代码, 日期, 数据源)</code> 三元组存储，全量重建只清除当前配置数据源的数据，不影响其他数据源。可通过"数据校对"查看差异。
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 单股分析 -->
+                        <section id="help-stock" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-bar-chart-line text-primary me-2"></i>单股分析</h4>
+                          <p class="text-muted small">针对单只股票，分析其在<b>指定月份</b>的历史涨跌规律。</p>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>参数</th><th>说明</th></tr></thead>
+                            <tbody>
+                              <tr><td>股票代码/名称</td><td>支持模糊搜索，输入代码或名称的一部分即可</td></tr>
+                              <tr><td>月份</td><td>1~12 月，选择要分析的目标月份</td></tr>
+                              <tr><td>起始/结束年份</td><td>统计范围，建议跨度不少于5年</td></tr>
+                            </tbody>
+                          </table>
+                          <p class="text-muted small">结果展示该股票在选定月份的上涨概率、平均涨跌幅，以及<b>逐年明细</b>，帮助判断规律的稳定性。</p>
+                          <p class="text-muted small"><b>多月份分析</b>：可一次查看该股票全年12个月的统计，快速找到"黄金月"和"雷区月"。</p>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 月榜单 -->
+                        <section id="help-filter" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-funnel text-primary me-2"></i>月榜单</h4>
+                          <p class="text-muted small">在<b>全市场</b>范围内，筛选某月历史上涨概率最高的前 N 支股票。</p>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>参数</th><th>说明</th></tr></thead>
+                            <tbody>
+                              <tr><td>市场</td><td>可选 A股/港股/美股/全部</td></tr>
+                              <tr><td>月份</td><td>目标月份</td></tr>
+                              <tr><td>显示条数</td><td>返回上涨概率最高的前 N 支，默认前20</td></tr>
+                              <tr><td>最少涨跌次数</td><td>过滤数据太少的股票（如新上市股票），建议设 3~5</td></tr>
+                            </tbody>
+                          </table>
+                          <div class="alert alert-warning small py-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            基础版仅按<b>上涨概率</b>排序，无法区分"涨概率高但涨幅小"和"涨概率高且涨幅大"的情况。建议配合<b>月榜单增强</b>使用。
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 月榜单增强 -->
+                        <section id="help-filter-enhanced" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-stars text-primary me-2"></i>月榜单增强</h4>
+                          <p class="text-muted small">基础版的升级，以<b>"年"为单位</b>聚合个股表现（而非每条K线），提供更多维度的分析指标，适合精选最佳个股。</p>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>参数</th><th>说明</th></tr></thead>
+                            <tbody>
+                              <tr><td>最少年数</td><td>至少有 N 年数据才纳入统计，过滤样本不足的股票</td></tr>
+                              <tr><td>显示条数</td><td>前50/前100/前200/全部，默认前50</td></tr>
+                            </tbody>
+                          </table>
+                          <p class="text-muted small">
+                            新增指标：<b>期望收益率、跑赢大盘概率、近5年上涨率、一致性、最大涨幅、最大跌幅</b>。支持按任意指标排序。
+                            详细公式见下方「<a href="#help-formulas" onclick="helpScrollTo('help-formulas')">指标公式大全</a>」。
+                          </p>
+                          <div class="alert alert-info small py-2">
+                            <i class="bi bi-lightbulb me-1"></i>
+                            <b>推荐筛选策略：</b>先按<b>期望收益率</b>排序找候选，再看<b>一致性</b>剔除规律不稳定的股票，最后用<b>近5年上涨率</b>验证规律是否仍然有效。
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 行业分析 -->
+                        <section id="help-industry" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-diagram-3 text-primary me-2"></i>行业分析</h4>
+                          <p class="text-muted small">统计各行业在<b>指定月份</b>的整体涨跌表现，帮助判断哪个行业在该月历史上最强。</p>
+                          <p class="text-muted small">计算方式：将行业内所有股票的月K涨跌幅取平均，作为该行业当年该月的表现，再跨年统计上涨概率和平均涨跌幅。</p>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>参数</th><th>说明</th></tr></thead>
+                            <tbody>
+                              <tr><td>行业分类</td><td>申万 或 中信，两者颗粒度略有不同</td></tr>
+                              <tr><td>市场</td><td>A股行业分类数据最完整，建议优先选 A股</td></tr>
+                            </tbody>
+                          </table>
+                          <p class="text-muted small"><b>行业内股票排名</b>：点击行业名称可进一步查看该行业内各股票的上涨概率排名。</p>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 行业增强分析 -->
+                        <section id="help-industry-enhanced" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-graph-up text-primary me-2"></i>行业增强分析</h4>
+                          <p class="text-muted small">行业分析的升级版，同样以<b>"年"为单位</b>聚合行业表现，提供与月榜单增强相同的多维度指标，用于横向对比各行业的综合质量。</p>
+                          <p class="text-muted small">适合回答：<em>"3月份历史上哪个行业不仅涨得多，而且年年都涨、还能跑赢大盘？"</em></p>
+                          <div class="alert alert-info small py-2">
+                            <i class="bi bi-lightbulb me-1"></i>
+                            <b>与行业分析的区别：</b>基础行业分析是所有个股K线的简单汇总；增强版先对每年行业均值汇聚，再跨年统计，更能反映行业层面的整体趋势，而非被单只大市值股票主导。
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 数据校对 -->
+                        <section id="help-compare" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-arrow-left-right text-primary me-2"></i>数据校对</h4>
+                          <p class="text-muted small">对比同一只股票在不同数据源（如 akshare、tushare、yfinance、alpha_vantage 等）的月K数据差异，帮助排查数据质量问题。</p>
+                          <p class="text-muted small">适用场景：当分析结果看起来异常时，可用此功能检查原始数据是否存在缺失、错误或多源数据不一致的情况。由于多数据源可共存，可直接选择已入库的源进行横向比较。</p>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- LOF基金套利 -->
+                        <section id="help-lof" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-currency-exchange text-primary me-2"></i>LOF基金套利</h4>
+                          <p class="text-muted small">LOF（上市开放式基金）存在场内价格与场外净值之间的价差，可利用申购赎回机制进行套利。</p>
+                          <table class="table table-sm table-bordered small">
+                            <thead class="table-light"><tr><th>术语</th><th>说明</th></tr></thead>
+                            <tbody>
+                              <tr><td>溢价率</td><td>场内价格高于净值的百分比，溢价时适合卖出场内 / 场外申购转入套利</td></tr>
+                              <tr><td>折价率</td><td>场内价格低于净值的百分比，折价时适合买入场内 / 场外赎回套利</td></tr>
+                              <tr><td>套利空间</td><td>溢/折价率扣除申赎费用后的净收益空间</td></tr>
+                            </tbody>
+                          </table>
+                          <div class="alert alert-warning small py-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            套利操作需关注申购赎回到账时间（T+1 或 T+3），期间价差可能收窄。实际操作前请自行评估风险。
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 指标公式大全 -->
+                        <section id="help-formulas" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-calculator text-primary me-2"></i>指标公式大全</h4>
+                          <p class="text-muted small">以下所有指标均基于<b>月K线涨跌幅</b>，以<b>年</b>为最小聚合单位（行业取年内所有个股均值，个股直接取当年月K值）。</p>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">📈 期望收益率（Expected Return）</div>
+                            <div class="help-formula-body">
+                              <code>期望收益率 = Σ(各年该月涨跌幅) ÷ 总年数</code>
+                              <p class="text-muted small mt-2 mb-0">即历年该月涨跌幅的<b>算术平均值</b>（包含正负年份）。正值代表该月历史上整体倾向上涨，负值则倾向下跌。比单纯看上涨概率更综合，因为同时反映了涨跌的幅度。</p>
+                            </div>
+                          </div>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">🎲 上涨概率（Up Probability）</div>
+                            <div class="help-formula-body">
+                              <code>上涨概率 = 涨年数 ÷ 总年数 × 100%</code>
+                              <p class="text-muted small mt-2 mb-0">历史上该月上涨年份的比例。≥60% 认为倾向强势，≤40% 认为倾向弱势。注意：上涨概率高不等于期望收益率高，需结合平均涨幅判断。</p>
+                            </div>
+                          </div>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">⬆️ 平均涨幅 / 平均跌幅</div>
+                            <div class="help-formula-body">
+                              <code>平均涨幅 = Σ(上涨年份的涨幅) ÷ 上涨年数</code><br>
+                              <code>平均跌幅 = Σ(|下跌年份的跌幅|) ÷ 下跌年数</code>
+                              <p class="text-muted small mt-2 mb-0">分别统计上涨年和下跌年的平均幅度（跌幅取绝对值）。两者配合上涨概率，可以计算出综合期望收益率。</p>
+                            </div>
+                          </div>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">🎯 跑赢大盘概率（Excess Market Probability）</div>
+                            <div class="help-formula-body">
+                              <code>跑赢大盘概率 = 该年涨幅 &gt; 同年全市场等权均值的年数 ÷ 总年数 × 100%</code>
+                              <p class="text-muted small mt-2 mb-0">衡量该股票/行业在该月的<b>超额收益能力</b>。即使某年市场整体下跌，只要该股跌得比大盘少，也算"跑赢"。跑赢概率 &gt;60% 说明具备持续的超额收益能力。</p>
+                            </div>
+                          </div>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">🔁 近5年上涨率（Recent Up Probability）</div>
+                            <div class="help-formula-body">
+                              <code>近5年上涨率 = 近5年内上涨年数 ÷ 近5年总年数 × 100%</code>
+                              <p class="text-muted small mt-2 mb-1">其中"近5年"= 结束年份 往前推4年（含结束年份共5年）。</p>
+                              <p class="text-muted small mb-0">反映<b>近期规律的有效性</b>。市场环境变化可能导致历史规律失效，近5年数据更贴近当前市场状态。若近5年上涨率明显低于全历史，说明规律可能在衰减。</p>
+                            </div>
+                          </div>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">📊 一致性（Consistency）</div>
+                            <div class="help-formula-body">
+                              <code>一致性 = 100 − |近5年上涨率 − 全历史上涨概率|</code>
+                              <p class="text-muted small mt-2 mb-0">衡量近5年规律与全历史规律的<b>吻合程度</b>。100 = 完全一致（近期和历史表现完全相同）；值越低说明近期表现与历史偏差越大，规律稳定性越差。建议优先选择一致性 ≥80 的标的。</p>
+                            </div>
+                          </div>
+
+                          <div class="help-formula-card mt-3">
+                            <div class="help-formula-title">⚡ 最大涨幅 / 最大跌幅</div>
+                            <div class="help-formula-body">
+                              <code>最大涨幅 = max(历年该月涨跌幅)</code><br>
+                              <code>最大跌幅 = min(历年该月涨跌幅)</code>
+                              <p class="text-muted small mt-2 mb-0">历史上该月出现过的极端情况，反映弹性与风险。最大涨幅大的股票爆发力强，但最大跌幅深的说明尾部风险也大。</p>
+                            </div>
+                          </div>
+                        </section>
+
+                        <hr class="my-4">
+
+                        <!-- 注意事项 -->
+                        <section id="help-tips" class="help-section mb-5">
+                          <h4 class="help-h4"><i class="bi bi-exclamation-triangle text-warning me-2"></i>注意事项</h4>
+                          <div class="row g-3">
+                            <div class="col-md-6">
+                              <div class="help-tip-card border-warning">
+                                <div class="fw-semibold mb-1">⚠️ 历史规律不代表未来</div>
+                                <div class="text-muted small">所有统计指标均基于历史数据，市场环境、政策、行业结构变化均可能导致规律失效。本工具仅供辅助参考，不构成投资建议。</div>
+                              </div>
+                            </div>
+                            <div class="col-md-6">
+                              <div class="help-tip-card border-info">
+                                <div class="fw-semibold mb-1">📊 样本量影响可靠性</div>
+                                <div class="text-muted small">样本年数越少，统计结果越不稳定。建议年份范围跨度不少于10年，月榜单增强中"最少年数"建议设 5 以上。</div>
+                              </div>
+                            </div>
+                            <div class="col-md-6">
+                              <div class="help-tip-card border-success">
+                                <div class="fw-semibold mb-1">🔍 数据质量差异</div>
+                                <div class="text-muted small">A股（akshare/tushare）数据最完整；港股建议用 akshare（覆盖全量），yfinance 仅覆盖约 33% 港股；美股 yfinance 覆盖主流 8000+ 只。数据校对功能可帮助排查异常。</div>
+                              </div>
+                            </div>
+                            <div class="col-md-6">
+                              <div class="help-tip-card border-danger">
+                                <div class="fw-semibold mb-1">🏭 行业分类仅支持A股</div>
+                                <div class="text-muted small">申万/中信行业分类数据目前仅覆盖A股。港美股的行业分析结果可能不准确，建议仅对A股使用行业相关功能。</div>
+                              </div>
+                            </div>
+                          </div>
+                        </section>
+
+                      </div><!-- /help-body -->
+                    </div><!-- /col -->
+                  </div><!-- /row -->
+                </div>
+
+                <!-- ===== LOF基金套利 ===== -->
+                <div id="lof-arbitrage" class="tab-content" style="margin: -24px; height: calc(100vh - var(--topbar-h));">
+                    <iframe id="lof-iframe" src="about:blank" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
+                </div>
+
+            </div><!-- /page-content -->
+        </div><!-- /main-area -->
+    </div><!-- /main-content -->
+
+    <!-- ===== 模态框 ===== -->
+    <!-- 添加用户 -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加用户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-user-form">
+                        <div class="mb-3">
+                            <label class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="add-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">密码</label>
+                            <input type="password" class="form-control" id="add-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">角色</label>
+                            <select class="form-select" id="add-role">
+                                <option value="user">普通用户</option>
+                                <option value="admin">管理员</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">有效期至（可选）</label>
+                            <input type="datetime-local" class="form-control" id="add-valid-until">
+                            <small class="form-text">留空表示永久有效</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="addUser()">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑用户 -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑用户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-user-form">
+                        <div class="mb-3">
+                            <label class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="edit-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">密码</label>
+                            <input type="password" class="form-control" id="edit-password" placeholder="留空则不修改密码">
+                            <small class="form-text">留空则不修改密码</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">角色</label>
+                            <select class="form-select" id="edit-role">
+                                <option value="user">普通用户</option>
+                                <option value="admin">管理员</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit-is-active" checked>
+                                <label class="form-check-label" for="edit-is-active">启用账户</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">有效期至（可选）</label>
+                            <input type="datetime-local" class="form-control" id="edit-valid-until">
+                            <small class="form-text">留空表示永久有效</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="updateUser()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 权限管理 -->
+    <div class="modal fade" id="permissionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">权限管理 — <span id="permission-username"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="permissions-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="savePermissions()">保存权限</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="/static/app.js?v=24"></script>
+    <!-- ===== 激活遮罩层 ===== -->
+    <div id="license-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.92);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+        <div class="card shadow-lg" style="width:100%;max-width:520px;border-radius:16px;overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:28px 32px 20px;">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-shield-lock-fill text-white" style="font-size:2rem"></i>
+                    <div>
+                        <h4 class="text-white mb-0 fw-bold">涌金阁</h4>
+                        <div class="text-white-50 small">多市场量化分析平台</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <!-- 试用期倒计时 -->
+                <div id="lic-trial-banner" style="display:none" class="alert alert-warning py-2 mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history"></i>
+                    <span id="lic-trial-text"></span>
+                </div>
+                <!-- 错误提示 -->
+                <div id="lic-error-banner" style="display:none" class="alert alert-danger py-2 mb-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i><span id="lic-error-text"></span>
+                </div>
+                <!-- 激活成功提示 -->
+                <div id="lic-success-banner" style="display:none" class="alert alert-success py-2 mb-3">
+                    <i class="bi bi-check-circle me-2"></i><span id="lic-success-text"></span>
+                </div>
+
+                <p class="text-muted small mb-3">
+                    将您的<strong>机器码</strong>发送给开发者获取激活码，激活后永久使用。
+                </p>
+
+                <!-- 机器码展示 -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">本机机器码</label>
+                    <div class="input-group">
+                        <input type="text" id="lic-machine-id" class="form-control font-monospace" readonly style="background:#f8fafc;letter-spacing:.1em">
+                        <button class="btn btn-outline-secondary" onclick="copyMachineId()" title="复制">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">联系开发者微信 <strong>yyongzf8</strong> 获取激活码</div>
+                </div>
+
+                <!-- 激活码输入 -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">激活码</label>
+                    <textarea id="lic-input" class="form-control font-monospace" rows="4"
+                        placeholder="粘贴激活码到此处..." style="font-size:.8rem;resize:none"></textarea>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" onclick="submitLicense()" id="lic-submit-btn">
+                        <i class="bi bi-unlock me-2"></i>立即激活
+                    </button>
+                    <button id="lic-trial-btn" style="display:none" class="btn btn-outline-secondary btn-sm" onclick="closeLicenseOverlay()">
+                        继续试用（<span id="lic-trial-days"></span>天）
+                    </button>
+                </div>
+            </div>
+            <div class="card-footer text-center text-muted" style="font-size:.75rem;background:#f8fafc">
+                涌金阁 v1.0.0 &nbsp;·&nbsp; 技术支持：yyongzf8
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 试用期提醒条（顶部悬浮） ===== -->
+    <div id="trial-topbar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:1050;background:#f59e0b;color:#fff;text-align:center;padding:6px;font-size:.85rem;font-weight:500;">
+        <i class="bi bi-clock-history me-1"></i>
+        试用期剩余 <strong id="trial-topbar-days"></strong> 天 &nbsp;·&nbsp;
+        <a href="#" class="text-white fw-bold" onclick="showLicenseOverlay();return false;">立即激活</a>
+    </div>
+
+    <script>
+        // 移动端侧边栏切换
+        function toggleMobileSidebar() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+            document.getElementById('sidebar-overlay').classList.toggle('active');
+        }
+        function closeMobileSidebar() {
+            document.getElementById('sidebar').classList.remove('mobile-open');
+            document.getElementById('sidebar-overlay').classList.remove('active');
+        }
+    </script>
+<script>
+// ===== 桌面模式：跳过所有认证 =====
+const ALL_PERMS = ["stock_analysis_single","stock_analysis_multi","month_filter","month_enhanced","industry_statistics","industry_enhanced","industry_top_stocks","source_compare","export_excel","data_management","lof_arbitrage"];
+currentUser = { id: 1, username: 'admin', role: 'admin', permissions: ALL_PERMS };
+
+// 覆盖 checkLoginStatus：直接初始化主界面
+async function checkLoginStatus() {
+    if (!currentUser.permissions) currentUser.permissions = ALL_PERMS;
+    updateUIByPermissions();
+}
+
+// 覆盖 showLoginPage：桌面版不跳转登录
+function showLoginPage() {}
+
+// 覆盖 logout：桌面版无操作
+async function logout() {}
+</script>
+</body>
+</html>

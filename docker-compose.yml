@@ -1,0 +1,21 @@
+services:
+  yongjinge:
+    build: .
+    container_name: yongjinge
+    ports:
+      - "8588:8588"
+    volumes:
+      # 持久化主数据库、lof1数据库、配置文件（均通过 entrypoint 统一管理到此目录）
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATA_DIR=/app/data
+      - DB_PATH=/app/data/stock_data.db
+      - CONFIG_PATH=/app/data/config.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8588/api/auth/current-user')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

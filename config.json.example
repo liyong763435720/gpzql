@@ -1,0 +1,47 @@
+{
+  "data_source": "akshare",
+  "market_data_sources": {
+    "A": "akshare",
+    "HK": "yfinance",
+    "US": "yfinance"
+  },
+  "tushare": {
+    "token": "your_tushare_token_here"
+  },
+  "baostock": {},
+  "akshare": {},
+  "jqdata": {
+    "username": "your_jqdata_phone",
+    "password": "your_jqdata_password"
+  },
+  "yfinance": {
+    "timeout": 30,
+    "retry_times": 3,
+    "retry_delay": 1
+  },
+  "alpha_vantage": {
+    "api_key": "your_alpha_vantage_api_key_here",
+    "requests_per_minute": 5
+  },
+  "update_frequency": "monthly",
+  "market_reference_counts": {
+    "A": 5300,
+    "HK": 2500,
+    "US": 8000
+  },
+  "alipay": {
+    "app_id": "your_alipay_app_id",
+    "private_key_path": "keys/alipay_private.pem",
+    "public_key_path": "keys/alipay_public.pem",
+    "notify_url": "https://your-domain.com/api/payment/alipay/notify",
+    "sandbox": false
+  },
+  "wechat_pay": {
+    "mchid": "your_mchid",
+    "appid": "your_appid",
+    "private_key_path": "keys/wechat_private.pem",
+    "cert_serial_no": "your_cert_serial_no",
+    "api_v3_key": "your_api_v3_key_32chars",
+    "notify_url": "https://your-domain.com/api/payment/wechat/notify"
+  }
+}

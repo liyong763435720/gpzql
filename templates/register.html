@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 涌金阁</title>
+    <link href="/static/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendor/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary:        #1677ff;
+            --primary-hover:  #0958d9;
+            --primary-light:  #e6f4ff;
+            --text-body:      #374151;
+            --text-muted:     #9ca3af;
+            --bg-page:        #f5f7fa;
+            --border:         #e5e7eb;
+            --radius-sm:      6px;
+            --radius:         8px;
+            --radius-lg:      12px;
+            --shadow:         0 1px 4px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #e0eaff 0%, #f5f7fa 60%, #dbeafe 100%);
+            color: var(--text-body);
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .register-box {
+            width: 400px;
+            background: #fff;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 40px 36px 32px;
+        }
+        .register-logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .register-logo .logo-icon {
+            width: 56px; height: 56px;
+            background: var(--primary-light);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; color: var(--primary);
+            margin: 0 auto 14px;
+        }
+        .register-logo h4 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 20px;
+            color: #111827;
+        }
+        .register-logo p {
+            margin: 4px 0 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .register-box .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+        .register-box .form-control {
+            border-color: var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+        }
+        .register-box .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(22,119,255,.1);
+        }
+        .register-box .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            padding: 8px;
+        }
+        .register-box .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+        .register-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 16px;
+        }
+        .register-hint a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .register-hint a:hover { text-decoration: underline; }
+        .closed-box {
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+        .closed-box .bi-lock {
+            font-size: 48px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 12px;
+        }
+        .closed-box h5 { color: #374151; font-weight: 600; }
+        .closed-box p  { color: var(--text-muted); font-size: 13px; }
+
+        /* 验证码行 */
+        .captcha-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .captcha-question {
+            min-width: 120px;
+            background: var(--bg-page);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 6px 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #111827;
+            letter-spacing: 1px;
+            text-align: center;
+            user-select: none;
+        }
+        .captcha-row .form-control { flex: 1; }
+        .btn-refresh {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+        }
+        .btn-refresh:hover { color: var(--primary); border-color: var(--primary); }
+
+        @media (max-width: 480px) {
+            .register-box { width: 100%; margin: 16px; padding: 28px 20px 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-box">
+        <div class="register-logo">
+            <div class="logo-icon"><i class="bi bi-graph-up"></i></div>
+            <h4>涌金阁</h4>
+            <p>多市场量化分析平台</p>
+        </div>
+
+        {% if registration_enabled %}
+        <!-- 注册表单 -->
+        <form id="register-form" onsubmit="event.preventDefault(); doRegister(); return false;">
+            <div class="mb-3">
+                <label class="form-label">用户名</label>
+                <input type="text" class="form-control" id="reg-username" placeholder="3-20位字母或数字" required autofocus autocomplete="username">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">密码</label>
+                <input type="password" class="form-control" id="reg-password" placeholder="至少6位字符" required autocomplete="new-password">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">确认密码</label>
+                <input type="password" class="form-control" id="reg-password2" placeholder="再次输入密码" required autocomplete="new-password">
+            </div>
+            <!-- 验证码 -->
+            <div class="mb-3">
+                <label class="form-label">验证码 <span style="color:var(--text-muted);font-weight:400;">（请计算结果）</span></label>
+                <div class="captcha-row">
+                    <div class="captcha-question" id="captcha-question">加载中…</div>
+                    <input type="number" class="form-control" id="captcha-answer" placeholder="结果" required autocomplete="off" style="width:80px;">
+                    <button type="button" class="btn-refresh" onclick="loadCaptcha()" title="换一题">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="submit-btn">注册</button>
+        </form>
+        <div id="reg-error" class="alert alert-danger mt-3" style="display:none;"></div>
+        <div id="reg-success" class="alert alert-success mt-3" style="display:none;"></div>
+        <div class="register-hint">
+            已有账号？<a href="/">返回登录</a>
+        </div>
+        {% else %}
+        <!-- 注册已关闭 -->
+        <div class="closed-box">
+            <i class="bi bi-lock"></i>
+            <h5>注册已关闭</h5>
+            <p>当前不开放新用户注册，如需账号请联系管理员。</p>
+        </div>
+        <div class="register-hint">
+            <a href="/">返回登录</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+    let captchaToken = '';
+
+    async function loadCaptcha() {
+        try {
+            const res = await fetch('/api/auth/captcha');
+            const data = await res.json();
+            captchaToken = data.token;
+            document.getElementById('captcha-question').textContent = data.question;
+            document.getElementById('captcha-answer').value = '';
+        } catch {
+            document.getElementById('captcha-question').textContent = '加载失败';
+        }
+    }
+
+    async function doRegister() {
+        const username  = document.getElementById('reg-username').value.trim();
+        const password  = document.getElementById('reg-password').value;
+        const password2 = document.getElementById('reg-password2').value;
+        const answer    = document.getElementById('captcha-answer').value;
+        const errorDiv  = document.getElementById('reg-error');
+        const successDiv = document.getElementById('reg-success');
+        const submitBtn = document.getElementById('submit-btn');
+
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+
+        if (password !== password2) {
+            errorDiv.textContent = '两次输入的密码不一致';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (!captchaToken || !answer) {
+            errorDiv.textContent = '请填写验证码';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '注册中…';
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username,
+                    password,
+                    captcha_token: captchaToken,
+                    captcha_answer: answer
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                successDiv.textContent = '注册成功！即将跳转到登录页…';
+                successDiv.style.display = 'block';
+                document.getElementById('register-form').reset();
+                setTimeout(() => { window.location.href = '/'; }, 1500);
+            } else {
+                errorDiv.textContent = result.message || '注册失败';
+                errorDiv.style.display = 'block';
+                // 验证码错误时自动刷新
+                if (result.message && result.message.includes('验证码')) {
+                    loadCaptcha();
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = '注册';
+            }
+        } catch (error) {
+            errorDiv.textContent = '注册失败: ' + error.message;
+            errorDiv.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = '注册';
+        }
+    }
+
+    // 页面加载时自动获取验证码
+    loadCaptcha();
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+[Unit]
+Description=Yongjinge - Multi-Market Quant Platform
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__WORKDIR__
+ExecStart=__PYTHON__ __WORKDIR__/start_prod.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
