@@ -2537,6 +2537,7 @@ function showMainContent() {
     if (currentUser && currentUser.role === 'admin') {
         loadUsers();
         loadSystemConfig();
+        loadPendingGifts();
     }
 
     // 登录后后台预取常用 tab 数据，用户点击时直接命中缓存
@@ -2934,10 +2935,12 @@ async function register() {
         });
         const result = await response.json();
         if (result.success) {
-            successDiv.textContent = '注册成功！请登录。';
+            successDiv.textContent = result.gift_pending
+                ? '注册成功！您的赠送点数需人工审核后发放，审核通过后自动到账，通常在24小时内完成。'
+                : '注册成功！请登录。';
             successDiv.style.display = 'block';
             document.getElementById('register-form').reset();
-            setTimeout(() => switchAuthTab('login'), 1500);
+            setTimeout(() => switchAuthTab('login'), result.gift_pending ? 4000 : 1500);
         } else {
             errorDiv.textContent = result.message || '注册失败';
             errorDiv.style.display = 'block';
@@ -3490,6 +3493,12 @@ async function loadSystemConfig() {
                 regCheckbox.checked = result.data.registration_enabled;
                 document.getElementById('registration-enabled-label').textContent = result.data.registration_enabled ? '已开放' : '已关闭';
             }
+            const giftCheckbox = document.getElementById('gift-credits-enabled');
+            if (giftCheckbox) {
+                giftCheckbox.checked = result.data.gift_credits_enabled !== false;
+                document.getElementById('gift-credits-label').textContent = giftCheckbox.checked ? '已开启' : '已关闭';
+                document.getElementById('gift-ip-review').value = result.data.gift_ip_review ?? 2;
+            }
         }
     } catch (error) {
         console.error('加载系统配置失败:', error);
@@ -3514,7 +3523,9 @@ async function saveSystemConfig() {
             credentials: 'include',
             body: JSON.stringify({
                 session_duration_hours: sessionDuration,
-                registration_enabled: document.getElementById('registration-enabled')?.checked ?? true
+                registration_enabled:  document.getElementById('registration-enabled')?.checked ?? true,
+                gift_credits_enabled:  document.getElementById('gift-credits-enabled')?.checked ?? true,
+                gift_ip_review:        parseInt(document.getElementById('gift-ip-review')?.value || '2'),
             })
         });
         
@@ -4607,6 +4618,20 @@ async function loadMyCredits() {
         _renderCreditsBalance(currentUser.credits);
     }
 
+    // 查询赠送点数审核状态
+    fetch('/api/user/gift-status', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => {
+            const notice = document.getElementById('gift-pending-notice');
+            if (!notice) return;
+            if (d.success && d.gift_status === 'pending') {
+                document.getElementById('gift-pending-amount').textContent = d.gift_amount;
+                notice.style.display = '';
+            } else {
+                notice.style.display = 'none';
+            }
+        }).catch(() => {});
+
     // ② 流水：命中预取缓存则直接渲染，感知不到加载
     if (_prefetchCache['credits_tx']) {
         _renderCreditsTx(_prefetchCache['credits_tx'], tbody);
@@ -5682,4 +5707,77 @@ async function submitAdminReply(id) {
         btn.disabled = false;
         btn.textContent = '提交回复';
     }
+}
+
+// ========== 注册赠送点数审核 ==========
+
+async function loadPendingGifts() {
+    try {
+        const res = await fetch('/api/admin/pending-gifts', { credentials: 'include' });
+        const d = await res.json();
+        if (!d.success) return;
+        const card = document.getElementById('pending-gifts-card');
+        const list = document.getElementById('pending-gifts-list');
+        const badge = document.getElementById('pending-gifts-count');
+        if (!card || !list) return;
+        const count = d.list.length;
+        badge.textContent = count || '';
+        if (count === 0) { card.style.display = 'none'; return; }
+        card.style.display = '';
+        list.innerHTML = d.list.map(function(u) {
+            // 计算同IP账号注册间隔
+            var accounts = u.ip_accounts || [];
+            var accountRows = accounts.map(function(a, idx) {
+                var interval = '';
+                if (idx > 0) {
+                    var prev = new Date(accounts[idx-1].created_at);
+                    var curr = new Date(a.created_at);
+                    var diff = Math.round((curr - prev) / 1000);
+                    if (diff < 60) interval = '<span style="color:#fa541c;font-size:11px;">↑ ' + diff + '秒后</span>';
+                    else if (diff < 3600) interval = '<span style="color:#fa8c16;font-size:11px;">↑ ' + Math.round(diff/60) + '分钟后</span>';
+                    else if (diff < 86400) interval = '<span style="color:#595959;font-size:11px;">↑ ' + Math.round(diff/3600) + '小时后</span>';
+                    else interval = '<span style="color:#595959;font-size:11px;">↑ ' + Math.round(diff/86400) + '天后</span>';
+                }
+                var isTarget = a.id === u.id;
+                var lastLogin = a.last_login
+                    ? '<span style="color:#52c41a;">' + a.last_login + '</span>'
+                    : '<span style="color:#bbb;">从未登录</span>';
+                return '<tr style="' + (isTarget ? 'background:#fffbe6;' : '') + '">'
+                    + '<td>' + (isTarget ? '<b>' + a.username + '</b> <span class="badge bg-warning text-dark" style="font-size:10px;">待审</span>' : a.username) + '</td>'
+                    + '<td style="color:#999;font-size:12px;">' + a.created_at + ' ' + interval + '</td>'
+                    + '<td>' + lastLogin + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            return '<div style="border:1px solid #ffe58f;border-radius:10px;margin-bottom:16px;overflow:hidden;">'
+                + '<div style="background:#fffbe6;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">'
+                + '<div>'
+                + '<span style="font-weight:600;font-size:14px;">' + u.username + '</span>'
+                + '<span style="margin-left:10px;font-size:12px;color:#999;">IP: ' + u.reg_ip + '</span>'
+                + '<span style="margin-left:10px;font-size:12px;color:#595959;">该IP共 <b>' + u.ip_total + '</b> 个账号</span>'
+                + '<span class="badge bg-warning text-dark ms-2">' + u.gift_amount + ' 点待审</span>'
+                + '</div>'
+                + '<div>'
+                + '<button class="btn btn-sm btn-success me-2" onclick="handlePendingGift(' + u.id + ',\'approve\')">通过并发放</button>'
+                + '<button class="btn btn-sm btn-outline-danger" onclick="handlePendingGift(' + u.id + ',\'reject\')">拒绝</button>'
+                + '</div></div>'
+                + '<table class="table table-sm mb-0" style="font-size:12px;">'
+                + '<thead class="table-light"><tr><th>账号</th><th>注册时间</th><th>最后登录</th></tr></thead>'
+                + '<tbody>' + accountRows + '</tbody></table>'
+                + '</div>';
+        }).join('');
+    } catch(e) { console.error('loadPendingGifts error', e); }
+}
+
+async function handlePendingGift(userId, action) {
+    const label = action === 'approve' ? '通过并发放点数' : '拒绝赠送';
+    if (!confirm('确认' + label + '？')) return;
+    try {
+        const res = await fetch('/api/admin/pending-gifts/' + userId + '/' + action, {
+            method: 'POST', credentials: 'include'
+        });
+        const d = await res.json();
+        if (d.success) { loadPendingGifts(); }
+        else { alert(d.detail || d.message || '操作失败'); }
+    } catch(e) { alert('网络错误'); }
 }

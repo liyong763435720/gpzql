@@ -331,6 +331,17 @@ class Database:
         except Exception:
             pass
 
+        # 兼容旧表：users 表补充注册IP和赠送点数审核字段
+        for col, definition in [
+            ('reg_ip',      'TEXT DEFAULT ""'),
+            ('gift_status', 'TEXT NOT NULL DEFAULT "given"'),   # given/skipped/pending/approved/rejected
+            ('gift_amount', 'INTEGER NOT NULL DEFAULT 0'),
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
+            except Exception:
+                pass
+
         # 用户工单表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tickets (

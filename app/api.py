@@ -526,12 +526,47 @@ async def register(request: Request, data: Dict = Body(...)):
             return {"success": False, "message": "密码过于简单，请使用更复杂的密码"}
 
         _record_reg_attempt(client_ip)
+
+        # 查询同 IP 已注册账号数
+        with db.get_connection() as _conn:
+            _cur = _conn.cursor()
+            _cur.execute("SELECT COUNT(*) FROM users WHERE reg_ip=? AND reg_ip!=''", (client_ip,))
+            ip_count = _cur.fetchone()[0]
+
         user_id = db.create_user(username, password, role='user', valid_until=None)
         db.set_user_permissions(user_id, ['stock_analysis_single'])
-        # 注册赠送 20 点（7天有效）
+
+        # 记录注册 IP
+        with db.get_connection() as _conn:
+            _conn.execute("UPDATE users SET reg_ip=? WHERE id=?", (client_ip, user_id))
+            _conn.commit()
+
+        # 赠送点数三层逻辑
+        gift_enabled  = db.get_system_config('gift_credits_enabled', '1') == '1'
+        review_limit  = int(db.get_system_config('gift_ip_review', '2'))  # 同IP达到此数量冻结待审
+
         _get_or_create_credit_account(user_id)
         expires_at = (datetime.now() + timedelta(days=7)).strftime('%Y%m%d%H%M%S')
+
+        if not gift_enabled:
+            # 总开关关闭
+            with db.get_connection() as _conn:
+                _conn.execute("UPDATE users SET gift_status='skipped', gift_amount=0 WHERE id=?", (user_id,))
+                _conn.commit()
+            return {"success": True, "message": "注册成功", "user_id": user_id}
+
+        if ip_count >= review_limit:
+            # 同IP账号过多，冻结点数待审核
+            with db.get_connection() as _conn:
+                _conn.execute("UPDATE users SET gift_status='pending', gift_amount=20 WHERE id=?", (user_id,))
+                _conn.commit()
+            return {"success": True, "message": "注册成功", "user_id": user_id, "gift_pending": True}
+
+        # 正常赠送
         _add_credits(user_id, 20, is_gift=True, description='注册赠送（7天有效）', expires_at=expires_at)
+        with db.get_connection() as _conn:
+            _conn.execute("UPDATE users SET gift_status='given', gift_amount=20 WHERE id=?", (user_id,))
+            _conn.commit()
         return {"success": True, "message": "注册成功", "user_id": user_id}
     except ValueError as e:
         return {"success": False, "message": str(e)}
@@ -1135,13 +1170,17 @@ async def get_system_config(session_id: Optional[str] = Cookie(None)):
     """获取系统配置（仅管理员）"""
     auth.require_admin(session_id)
     try:
-        session_duration = db.get_system_config('session_duration_hours', '24')
+        session_duration     = db.get_system_config('session_duration_hours', '24')
         registration_enabled = db.get_system_config('registration_enabled', '1')
+        gift_enabled         = db.get_system_config('gift_credits_enabled', '1')
+        gift_ip_review       = db.get_system_config('gift_ip_review', '2')
         from fastapi.responses import JSONResponse
         return JSONResponse(
             content={"success": True, "data": {
                 "session_duration_hours": int(session_duration),
-                "registration_enabled": registration_enabled == '1'
+                "registration_enabled":  registration_enabled == '1',
+                "gift_credits_enabled":  gift_enabled == '1',
+                "gift_ip_review":        int(gift_ip_review),
             }},
             headers={"Cache-Control": "no-store"}
         )
@@ -1160,6 +1199,10 @@ async def update_system_config(data: Dict = Body(...), session_id: Optional[str]
             db.set_system_config('session_duration_hours', str(session_duration))
         if 'registration_enabled' in data:
             db.set_system_config('registration_enabled', '1' if data['registration_enabled'] else '0')
+        if 'gift_credits_enabled' in data:
+            db.set_system_config('gift_credits_enabled', '1' if data['gift_credits_enabled'] else '0')
+        if 'gift_ip_review' in data:
+            db.set_system_config('gift_ip_review', str(int(data['gift_ip_review'])))
         return {"success": True, "message": "系统配置已更新"}
     except Exception as e:
         return {"success": False, "message": f"更新配置失败: {str(e)}"}
@@ -3210,6 +3253,91 @@ def _handle_credit_order_paid(order_id: str, user_id: int, billing: str) -> None
     _add_credits(user_id, pkg['credits'], is_gift=False,
                  description=f"充值 {pkg['name']}（{pkg['credits']}点）",
                  order_id=order_id)
+
+
+# ========== 注册赠送点数审核 ==========
+
+@app.get("/api/user/gift-status")
+async def get_gift_status(session_id: Optional[str] = Cookie(None)):
+    """用户查询自己的赠送点数状态"""
+    user = auth.get_current_user(session_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT gift_status, gift_amount FROM users WHERE id=?", (user['id'],))
+        row = cursor.fetchone()
+    if not row:
+        return {"success": True, "gift_status": "given", "gift_amount": 0}
+    return {"success": True, "gift_status": row['gift_status'], "gift_amount": row['gift_amount']}
+
+@app.get("/api/admin/pending-gifts")
+async def admin_get_pending_gifts(session_id: Optional[str] = Cookie(None)):
+    """获取待审核赠送点数列表，含同IP账号详情"""
+    auth.require_admin(session_id)
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        # 待审核用户
+        cursor.execute("""
+            SELECT id, username, reg_ip, gift_status, gift_amount, created_at
+            FROM users WHERE gift_status='pending' ORDER BY created_at DESC
+        """)
+        pending = [dict(r) for r in cursor.fetchall()]
+
+        # 补充：同IP所有账号 + 各账号最后登录时间
+        for u in pending:
+            ip = u['reg_ip']
+            cursor.execute("""
+                SELECT u.id, u.username, u.created_at,
+                       MAX(s.created_at) AS last_login
+                FROM users u
+                LEFT JOIN sessions s ON s.user_id = u.id
+                WHERE u.reg_ip = ? AND u.reg_ip != ''
+                GROUP BY u.id
+                ORDER BY u.created_at ASC
+            """, (ip,))
+            ip_accounts = [dict(r) for r in cursor.fetchall()]
+            u['ip_accounts'] = ip_accounts
+            u['ip_total'] = len(ip_accounts)
+
+    return {"success": True, "list": pending}
+
+@app.post("/api/admin/pending-gifts/{user_id}/approve")
+async def admin_approve_gift(user_id: int, session_id: Optional[str] = Cookie(None)):
+    """审核通过：实际发放冻结的赠送点数"""
+    admin = auth.require_admin(session_id)
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT gift_status, gift_amount FROM users WHERE id=?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        if row['gift_status'] != 'pending':
+            raise HTTPException(status_code=400, detail="该用户无待审核的赠送点数")
+        amount = row['gift_amount']
+    _get_or_create_credit_account(user_id)
+    expires_at = (datetime.now() + timedelta(days=7)).strftime('%Y%m%d%H%M%S')
+    _add_credits(user_id, amount, is_gift=True, description=f'注册赠送（审核通过，7天有效）', expires_at=expires_at)
+    with db.get_connection() as conn:
+        conn.execute("UPDATE users SET gift_status='approved' WHERE id=?", (user_id,))
+        conn.commit()
+    return {"success": True, "message": f"已发放 {amount} 点"}
+
+@app.post("/api/admin/pending-gifts/{user_id}/reject")
+async def admin_reject_gift(user_id: int, session_id: Optional[str] = Cookie(None)):
+    """审核拒绝：不发放点数"""
+    auth.require_admin(session_id)
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT gift_status FROM users WHERE id=?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        if row['gift_status'] != 'pending':
+            raise HTTPException(status_code=400, detail="该用户无待审核的赠送点数")
+        conn.execute("UPDATE users SET gift_status='rejected' WHERE id=?", (user_id,))
+        conn.commit()
+    return {"success": True, "message": "已拒绝"}
 
 
 # ========== 工单系统 ==========

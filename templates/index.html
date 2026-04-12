@@ -2362,6 +2362,20 @@
                                                 </div>
                                                 <small class="form-text">关闭后新用户无法自行注册，仅管理员可添加账号</small>
                                             </div>
+                                            <hr>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">注册赠送点数</label>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="gift-credits-enabled" checked onchange="document.getElementById('gift-credits-label').textContent=this.checked?'已开启':'已关闭'">
+                                                    <label class="form-check-label" for="gift-credits-enabled" id="gift-credits-label">已开启</label>
+                                                </div>
+                                                <small class="form-text">关闭后新注册用户不再自动赠送20点</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">同IP冻结审核阈值</label>
+                                                <input type="number" class="form-control" id="gift-ip-review" min="1" max="99" value="2" style="width:100px;">
+                                                <small class="form-text">同一IP已注册账号数 ≥ 此值时，新账号点数冻结待审核（默认2，即第2个起冻结）</small>
+                                            </div>
                                             <button type="button" class="btn btn-primary" onclick="saveSystemConfig()">
                                                 <i class="bi bi-check-lg"></i> 保存系统配置
                                             </button>
@@ -2387,6 +2401,17 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- 待审核赠送点数 -->
+                            <div class="card mb-3" id="pending-gifts-card" style="display:none;">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <h6 class="mb-0"><i class="bi bi-gift text-warning me-2"></i>待审核赠送点数 <span id="pending-gifts-count" class="badge bg-warning text-dark ms-1"></span></h6>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="loadPendingGifts()"><i class="bi bi-arrow-clockwise"></i></button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div id="pending-gifts-list"></div>
+                                </div>
+                            </div>
+
                             <div class="card">
                                 <div class="card-header d-flex align-items-center justify-content-between">
                                     <h6>用户列表</h6>
@@ -2927,6 +2952,15 @@
                 <div id="my-credits" class="tab-content" style="display:none;">
                     <div class="container-fluid p-4">
                         <h5 class="mb-4"><i class="bi bi-coin text-warning me-2"></i>我的点数</h5>
+                        <!-- 赠送点数审核提示（pending时显示）-->
+                        <div id="gift-pending-notice" style="display:none;background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+                            <div style="font-size:14px;font-weight:600;color:#d48806;margin-bottom:4px;">
+                                <i class="bi bi-hourglass-split me-2"></i>赠送点数审核中
+                            </div>
+                            <div style="font-size:13px;color:#7c5c00;">
+                                您有 <b id="gift-pending-amount">20</b> 点注册赠送点数正在人工审核，审核通过后将自动到账，通常在24小时内完成。
+                            </div>
+                        </div>
                         <!-- 余额卡 -->
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
