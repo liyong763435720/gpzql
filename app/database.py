@@ -1679,9 +1679,6 @@ class Database:
                 (row[0],)
             )
             stock_count = cursor.fetchone()[0]
-
-        results = []
-        for row in cursor.fetchall():
             data_count = row[1]
             results.append({
                 'data_source': row[0],
