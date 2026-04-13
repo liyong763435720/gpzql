@@ -165,6 +165,17 @@
                 <input type="text" class="form-control" id="reg-username" placeholder="3-20位字母或数字" required autofocus autocomplete="username">
             </div>
             <div class="mb-3">
+                <label class="form-label">邮箱 <span id="email-optional-tip" style="color:var(--text-muted);font-weight:400;">（选填）</span><span id="email-required-tip" style="color:var(--text-muted);font-weight:400;display:none;">（必填，用于找回密码）</span></label>
+                <div style="display:flex;gap:8px;">
+                    <input type="email" class="form-control" id="reg-email" placeholder="your@email.com" autocomplete="email">
+                    <button type="button" class="btn btn-outline-primary" id="send-code-btn" onclick="sendEmailCode()" style="white-space:nowrap;display:none;">发送验证码</button>
+                </div>
+            </div>
+            <div class="mb-3" id="email-code-row" style="display:none;">
+                <label class="form-label">邮箱验证码</label>
+                <input type="text" class="form-control" id="reg-email-code" placeholder="请输入6位验证码" maxlength="6" autocomplete="off">
+            </div>
+            <div class="mb-3">
                 <label class="form-label">密码</label>
                 <input type="password" class="form-control" id="reg-password" placeholder="至少6位字符" required autocomplete="new-password">
             </div>
@@ -205,6 +216,26 @@
 
     <script>
     let captchaToken = '';
+    let emailVerifyRequired = false;
+    let emailCodeSent = false;
+    let sendCodeTimer = 0;
+
+    // 检查系统是否开启邮箱验证
+    async function checkEmailVerify() {
+        try {
+            const res = await fetch('/api/auth/registration-status');
+            const d = await res.json();
+            emailVerifyRequired = d.email_verify_required || false;
+            if (emailVerifyRequired) {
+                document.getElementById('email-optional-tip').style.display = 'none';
+                document.getElementById('email-required-tip').style.display = '';
+                document.getElementById('send-code-btn').style.display = '';
+                document.getElementById('reg-email').required = true;
+            } else {
+                document.getElementById('send-code-btn').style.display = 'none';
+            }
+        } catch {}
+    }
 
     async function loadCaptcha() {
         try {
@@ -218,8 +249,59 @@
         }
     }
 
+    async function sendEmailCode() {
+        const email = document.getElementById('reg-email').value.trim();
+        const btn   = document.getElementById('send-code-btn');
+        const errorDiv = document.getElementById('reg-error');
+        errorDiv.style.display = 'none';
+        if (!email || !email.includes('@')) {
+            errorDiv.textContent = '请先填写有效的邮箱地址';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = '发送中…';
+        try {
+            const res = await fetch('/api/auth/send-reg-email-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const d = await res.json();
+            if (d.success) {
+                document.getElementById('email-code-row').style.display = 'block';
+                emailCodeSent = true;
+                // 60秒倒计时
+                let left = 60;
+                btn.textContent = `${left}s后重发`;
+                sendCodeTimer = setInterval(() => {
+                    left--;
+                    if (left <= 0) {
+                        clearInterval(sendCodeTimer);
+                        btn.disabled = false;
+                        btn.textContent = '重新发送';
+                    } else {
+                        btn.textContent = `${left}s后重发`;
+                    }
+                }, 1000);
+            } else {
+                errorDiv.textContent = d.message || '发送失败';
+                errorDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '发送验证码';
+            }
+        } catch(e) {
+            errorDiv.textContent = '网络错误';
+            errorDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = '发送验证码';
+        }
+    }
+
     async function doRegister() {
         const username  = document.getElementById('reg-username').value.trim();
+        const email     = document.getElementById('reg-email').value.trim().toLowerCase();
+        const emailCode = document.getElementById('reg-email-code').value.trim();
         const password  = document.getElementById('reg-password').value;
         const password2 = document.getElementById('reg-password2').value;
         const answer    = document.getElementById('captcha-answer').value;
@@ -240,31 +322,46 @@
             errorDiv.style.display = 'block';
             return;
         }
+        if (emailVerifyRequired && !emailCodeSent) {
+            errorDiv.textContent = '请先获取邮箱验证码';
+            errorDiv.style.display = 'block';
+            return;
+        }
 
         submitBtn.disabled = true;
         submitBtn.textContent = '注册中…';
 
         try {
+            const payload = {
+                username,
+                password,
+                captcha_token: captchaToken,
+                captcha_answer: answer
+            };
+            if (email) {
+                payload.email = email;
+                if (emailVerifyRequired || emailCodeSent) {
+                    payload.email_code = emailCode;
+                }
+            }
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username,
-                    password,
-                    captcha_token: captchaToken,
-                    captcha_answer: answer
-                })
+                body: JSON.stringify(payload)
             });
             const result = await response.json();
             if (result.success) {
-                successDiv.textContent = '注册成功！即将跳转到登录页…';
+                let msg = '注册成功！即将跳转到登录页…';
+                if (result.gift_pending) {
+                    msg = '注册成功！赠送点数待审核，即将跳转到登录页…';
+                }
+                successDiv.textContent = msg;
                 successDiv.style.display = 'block';
                 document.getElementById('register-form').reset();
                 setTimeout(() => { window.location.href = '/'; }, 1500);
             } else {
                 errorDiv.textContent = result.message || '注册失败';
                 errorDiv.style.display = 'block';
-                // 验证码错误时自动刷新
                 if (result.message && result.message.includes('验证码')) {
                     loadCaptcha();
                 }
@@ -279,8 +376,8 @@
         }
     }
 
-    // 页面加载时自动获取验证码
     loadCaptcha();
+    checkEmailVerify();
     </script>
 </body>
 </html>

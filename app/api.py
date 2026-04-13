@@ -44,6 +44,10 @@ def _record_reg_attempt(ip: str):
 _captcha_store: dict = {}   # token -> (answer, expiry)
 _CAPTCHA_TTL = 600          # 验证码有效期（秒）
 
+# 注册邮箱验证码（内存存储）
+_email_code_store: dict = {}   # email -> (code, expiry)
+_EMAIL_CODE_TTL = 600          # 10分钟有效
+
 # /api/data/status 服务端缓存（数据导入后失效）
 _data_status_cache: dict = {}   # {'result': ..., 'ts': float}
 _DATA_STATUS_TTL = 120          # 2 分钟
@@ -86,6 +90,7 @@ _USERNAME_BLACKLIST = {
 
 from app.database import Database
 from app.config import Config
+from app.email_utils import send_email
 from app.statistics import Statistics
 from app.data_updater import DataUpdater
 from app.data_fetcher import DataFetcher
@@ -463,7 +468,10 @@ async def login(data: Dict = Body(...), response: JSONResponse = None):
 async def registration_status():
     """查询注册是否开放（公开接口）"""
     enabled = db.get_system_config('registration_enabled', '1') == '1'
-    return {"registration_enabled": enabled}
+    return {
+        "registration_enabled": enabled,
+        "email_verify_required": db.get_system_config('reg_email_verify', '0') == '1'
+    }
 
 
 @app.get("/api/auth/captcha")
@@ -476,6 +484,50 @@ async def get_captcha():
         _captcha_store.pop(t, None)
     token, question = _gen_captcha()
     return {"token": token, "question": question}
+
+
+@app.post("/api/auth/send-reg-email-code")
+async def send_reg_email_code(request: Request, data: Dict = Body(...)):
+    """注册时发送邮箱验证码（公开接口）"""
+    if db.get_system_config('registration_enabled', '1') == '0':
+        return {"success": False, "message": "注册功能已关闭"}
+
+    email = (data.get('email') or '').strip().lower()
+    if not email or '@' not in email:
+        return {"success": False, "message": "请输入有效的邮箱地址"}
+
+    # 检查邮箱是否已被注册
+    if db.get_user_by_email(email):
+        return {"success": False, "message": "该邮箱已被注册"}
+
+    # 检查 SMTP 是否配置
+    smtp_cfg = config.get('smtp') or {}
+    if not smtp_cfg.get('host') or not smtp_cfg.get('user') or not smtp_cfg.get('password'):
+        return {"success": False, "message": "系统邮件服务未配置，请联系管理员"}
+
+    # IP 频率限制（复用注册限制）
+    client_ip = request.client.host if request.client else "unknown"
+    allowed, wait = _check_reg_rate(client_ip)
+    if not allowed:
+        minutes = (wait + 59) // 60
+        return {"success": False, "message": f"操作过于频繁，请 {minutes} 分钟后再试"}
+
+    code = str(secrets.randbelow(900000) + 100000)
+    _email_code_store[email] = (code, time.time() + _EMAIL_CODE_TTL)
+
+    subject = "涌金阁 - 注册验证码"
+    body = f"""
+<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+  <h2 style="color:#1677ff;margin-bottom:8px;">邮箱验证</h2>
+  <p style="color:#555;">您正在注册涌金阁账号，验证码为：</p>
+  <div style="font-size:36px;font-weight:700;letter-spacing:8px;color:#1677ff;padding:16px 0;">{code}</div>
+  <p style="color:#888;font-size:13px;">验证码10分钟内有效，请勿泄露给他人。<br>如非本人操作，请忽略此邮件。</p>
+</div>
+"""
+    ok = send_email(smtp_cfg, email, subject, body)
+    if not ok:
+        return {"success": False, "message": "邮件发送失败，请联系管理员"}
+    return {"success": True, "message": "验证码已发送，请查收邮件"}
 
 
 @app.post("/api/auth/register")
@@ -498,6 +550,26 @@ async def register(request: Request, data: Dict = Body(...)):
         captcha_answer = data.get('captcha_answer', '')
         if not _verify_captcha(captcha_token, captcha_answer):
             return {"success": False, "message": "验证码错误或已过期，请刷新后重试"}
+
+        # 3. 邮箱验证码校验（若系统开启邮箱验证）
+        email_verify_enabled = db.get_system_config('reg_email_verify', '0') == '1'
+        email = (data.get('email') or '').strip().lower()
+        if email_verify_enabled:
+            if not email or '@' not in email:
+                return {"success": False, "message": "请输入有效的邮箱地址"}
+            email_code = (data.get('email_code') or '').strip()
+            entry = _email_code_store.pop(email, None)
+            if not entry:
+                return {"success": False, "message": "邮箱验证码无效，请重新获取"}
+            code, expiry = entry
+            if time.time() > expiry:
+                return {"success": False, "message": "邮箱验证码已过期，请重新获取"}
+            if email_code != code:
+                return {"success": False, "message": "邮箱验证码错误"}
+        elif email and '@' in email:
+            # 未开启强制验证，但用户填了邮箱，检查是否重复
+            if db.get_user_by_email(email):
+                return {"success": False, "message": "该邮箱已被注册"}
 
         username = (data.get('username') or '').strip()
         password = data.get('password') or ''
@@ -535,6 +607,10 @@ async def register(request: Request, data: Dict = Body(...)):
 
         user_id = db.create_user(username, password, role='user', valid_until=None)
         db.set_user_permissions(user_id, ['stock_analysis_single'])
+
+        # 保存邮箱
+        if email and '@' in email:
+            db.set_user_email(user_id, email)
 
         # 记录注册 IP
         with db.get_connection() as _conn:
@@ -1165,6 +1241,73 @@ async def change_password(data: Dict = Body(...), session_id: Optional[str] = Co
         return {"success": False, "message": f"修改密码失败: {str(e)}"}
 
 
+@app.post("/api/auth/forgot-password")
+async def forgot_password(data: Dict = Body(...)):
+    """忘记密码：发送重置验证码到邮箱"""
+    email = (data.get('email') or '').strip().lower()
+    if not email:
+        return {"success": False, "message": "请输入邮箱地址"}
+    user = db.get_user_by_email(email)
+    if not user:
+        return {"success": False, "message": "该邮箱未绑定任何账号"}
+    # 生成6位数字验证码
+    code = str(secrets.randbelow(900000) + 100000)
+    from datetime import datetime, timedelta
+    expires_at = (datetime.utcnow() + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
+    db.create_reset_token(user['id'], code, expires_at)
+    # 读取 SMTP 配置
+    smtp_cfg = config.get('smtp') or {}
+    subject = "涌金阁 - 密码重置验证码"
+    body = f"""
+<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+  <h2 style="color:#1677ff;margin-bottom:8px;">密码重置</h2>
+  <p style="color:#555;">您的验证码为：</p>
+  <div style="font-size:36px;font-weight:700;letter-spacing:8px;color:#1677ff;padding:16px 0;">{code}</div>
+  <p style="color:#888;font-size:13px;">验证码15分钟内有效，请勿泄露给他人。<br>如非本人操作，请忽略此邮件。</p>
+</div>
+"""
+    ok = send_email(smtp_cfg, email, subject, body)
+    if not ok:
+        return {"success": False, "message": "邮件发送失败，请检查系统SMTP配置"}
+    return {"success": True, "message": "如果该邮箱已绑定账号，重置邮件将在几分钟内发出"}
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(data: Dict = Body(...)):
+    """使用验证码重置密码"""
+    email   = (data.get('email') or '').strip().lower()
+    code    = (data.get('code') or '').strip()
+    new_pwd = data.get('new_password') or ''
+    if not email or not code or not new_pwd:
+        return {"success": False, "message": "参数不完整"}
+    if len(new_pwd) < 6:
+        return {"success": False, "message": "新密码至少6位"}
+    user = db.get_user_by_email(email)
+    if not user:
+        return {"success": False, "message": "验证码无效或已过期"}
+    from datetime import datetime
+    token_row = db.get_reset_token(code)
+    if not token_row or token_row['used'] or token_row['user_id'] != user['id']:
+        return {"success": False, "message": "验证码无效或已过期"}
+    if datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') > token_row['expires_at']:
+        return {"success": False, "message": "验证码已过期，请重新获取"}
+    db.update_user(user['id'], password=new_pwd)
+    db.consume_reset_token(code)
+    return {"success": True, "message": "密码重置成功，请重新登录"}
+
+
+@app.post("/api/auth/test-smtp")
+async def test_smtp(data: Dict = Body(...), session_id: Optional[str] = Cookie(None)):
+    """测试SMTP配置（管理员）"""
+    auth.require_admin(session_id)
+    to = (data.get('to') or '').strip()
+    if not to:
+        return {"success": False, "message": "请输入收件人邮箱"}
+    smtp_cfg = config.get('smtp') or {}
+    ok = send_email(smtp_cfg, to, "涌金阁 SMTP 测试", "<p>SMTP配置测试邮件，收到即代表配置正确。</p>")
+    return {"success": ok, "message": "发送成功" if ok else "发送失败，请检查SMTP配置"}
+
+
 @app.get("/api/system/config")
 async def get_system_config(session_id: Optional[str] = Cookie(None)):
     """获取系统配置（仅管理员）"""
@@ -1181,6 +1324,8 @@ async def get_system_config(session_id: Optional[str] = Cookie(None)):
                 "registration_enabled":  registration_enabled == '1',
                 "gift_credits_enabled":  gift_enabled == '1',
                 "gift_ip_review":        int(gift_ip_review),
+                "smtp":                  config.get('smtp') or {},
+                "reg_email_verify":      db.get_system_config('reg_email_verify', '0') == '1',
             }},
             headers={"Cache-Control": "no-store"}
         )
@@ -1203,6 +1348,10 @@ async def update_system_config(data: Dict = Body(...), session_id: Optional[str]
             db.set_system_config('gift_credits_enabled', '1' if data['gift_credits_enabled'] else '0')
         if 'gift_ip_review' in data:
             db.set_system_config('gift_ip_review', str(int(data['gift_ip_review'])))
+        if 'reg_email_verify' in data:
+            db.set_system_config('reg_email_verify', '1' if data['reg_email_verify'] else '0')
+        if 'smtp' in data:
+            config.set('smtp', data['smtp'])
         return {"success": True, "message": "系统配置已更新"}
     except Exception as e:
         return {"success": False, "message": f"更新配置失败: {str(e)}"}

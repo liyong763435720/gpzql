@@ -120,6 +120,24 @@ class Database:
             )
         """)
         
+        # 迁移 users 表：补充 email 字段
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
+        except Exception:
+            pass
+
+        # 密码重置令牌表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                token      TEXT PRIMARY KEY,
+                user_id    INTEGER NOT NULL,
+                expires_at TEXT NOT NULL,
+                used       INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
         # 会话表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
@@ -792,7 +810,8 @@ class Database:
         cursor.execute("""
             SELECT u.id, u.username, u.role, u.is_active, u.valid_until, u.created_at,
                    COALESCE(c.balance, 0) as balance,
-                   COALESCE(c.gift_balance, 0) as gift_balance
+                   COALESCE(c.gift_balance, 0) as gift_balance,
+                   u.email
             FROM users u
             LEFT JOIN credit_accounts c ON c.user_id = u.id
             ORDER BY u.created_at DESC
@@ -808,7 +827,8 @@ class Database:
                 'created_at': row[5],
                 'credits_balance': row[6],
                 'credits_gift': row[7],
-                'credits_total': row[6] + row[7]
+                'credits_total': row[6] + row[7],
+                'email': row[8] or ''
             })
         conn.close()
         return users
@@ -2134,4 +2154,46 @@ class Database:
             }
             for r in rows
         ]
+
+    def get_user_by_email(self, email: str) -> Optional[Dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ? AND is_active = 1", (email,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def set_user_email(self, user_id: int, email: str):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET email = ?, updated_at = datetime('now') WHERE id = ?", (email, user_id))
+        conn.commit()
+        conn.close()
+
+    def create_reset_token(self, user_id: int, token: str, expires_at: str):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        # 先废弃旧 token
+        cursor.execute("UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0", (user_id,))
+        cursor.execute(
+            "INSERT INTO password_reset_tokens (token, user_id, expires_at, used, created_at) VALUES (?,?,?,0,datetime('now'))",
+            (token, user_id, expires_at)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_reset_token(self, token: str) -> Optional[Dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM password_reset_tokens WHERE token = ?", (token,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def consume_reset_token(self, token: str):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE password_reset_tokens SET used = 1 WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
 

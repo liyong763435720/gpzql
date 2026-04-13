@@ -273,6 +273,11 @@ function showTab(tabName, eventElement) {
         loadDashboardIndustryStats();
     }
 
+    // 切换到用户管理/系统配置时重新加载最新配置（确保SMTP等字段不丢失）
+    if ((tabName === 'config' || tabName === 'user-management') && currentUser && currentUser.role === 'admin') {
+        loadSystemConfig();
+    }
+
     // 切换到套餐管理时初始化 tab
     if (tabName === 'plan-management') {
         _planTabLoaded = { price: false, promo: false, trial: false, records: false };
@@ -3182,7 +3187,7 @@ async function loadUsers() {
 function displayUsersList(users) {
     const listDiv = document.getElementById('users-list');
     let html = '<div class="table-responsive"><table class="table table-striped table-hover">';
-    html += '<thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>状态</th><th>有效期</th><th>创建时间</th><th>点数余额</th><th>点数调整</th><th>操作</th></tr></thead><tbody>';
+    html += '<thead><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>有效期</th><th>创建时间</th><th>点数余额</th><th>点数调整</th><th>操作</th></tr></thead><tbody>';
 
     users.forEach(user => {
         const roleBadge = user.role === 'admin' ? '<span class="badge bg-danger">管理员</span>' : '<span class="badge bg-secondary">普通用户</span>';
@@ -3212,6 +3217,7 @@ function displayUsersList(users) {
         html += `<tr>
             <td>${user.id}</td>
             <td>${user.username}</td>
+            <td><span class="text-muted small">${user.email || '<i>未填写</i>'}</span></td>
             <td>${roleBadge}</td>
             <td>${statusBadge}</td>
             <td>${validUntil}</td>
@@ -3499,6 +3505,18 @@ async function loadSystemConfig() {
                 document.getElementById('gift-credits-label').textContent = giftCheckbox.checked ? '已开启' : '已关闭';
                 document.getElementById('gift-ip-review').value = result.data.gift_ip_review ?? 2;
             }
+            if (typeof result.data.reg_email_verify !== 'undefined') {
+                const el = document.getElementById('reg-email-verify-toggle');
+                if (el) el.checked = !!result.data.reg_email_verify;
+            }
+            // SMTP
+            const smtp = result.data.smtp || {};
+            document.getElementById('smtp-host').value         = smtp.host || '';
+            document.getElementById('smtp-port').value         = smtp.port || 465;
+            document.getElementById('smtp-ssl').value          = smtp.use_ssl === false ? 'false' : 'true';
+            document.getElementById('smtp-user').value         = smtp.user || '';
+            document.getElementById('smtp-password').value     = smtp.password || '';
+            document.getElementById('smtp-from-addr').value    = smtp.from_addr || '';
         }
     } catch (error) {
         console.error('加载系统配置失败:', error);
@@ -3526,6 +3544,7 @@ async function saveSystemConfig() {
                 registration_enabled:  document.getElementById('registration-enabled')?.checked ?? true,
                 gift_credits_enabled:  document.getElementById('gift-credits-enabled')?.checked ?? true,
                 gift_ip_review:        parseInt(document.getElementById('gift-ip-review')?.value || '2'),
+                reg_email_verify:      document.getElementById('reg-email-verify-toggle')?.checked || false,
             })
         });
         
@@ -5779,5 +5798,142 @@ async function handlePendingGift(userId, action) {
         const d = await res.json();
         if (d.success) { loadPendingGifts(); }
         else { alert(d.detail || d.message || '操作失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+
+// ── 用户修改密码 ──
+function showUserChangePwdModal() {
+    document.getElementById('user-old-password').value = '';
+    document.getElementById('user-new-password').value = '';
+    document.getElementById('user-confirm-password').value = '';
+    document.getElementById('user-change-pwd-modal').style.display = 'flex';
+}
+function closeUserChangePwdModal() {
+    document.getElementById('user-change-pwd-modal').style.display = 'none';
+}
+async function submitUserChangePwd() {
+    const oldPwd  = document.getElementById('user-old-password').value.trim();
+    const newPwd  = document.getElementById('user-new-password').value.trim();
+    const confPwd = document.getElementById('user-confirm-password').value.trim();
+    if (!oldPwd || !newPwd || !confPwd) { alert('请填写全部字段'); return; }
+    if (newPwd !== confPwd) { alert('两次输入的新密码不一致'); return; }
+    if (newPwd.length < 6) { alert('新密码至少6位'); return; }
+    try {
+        const res = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+        });
+        const d = await res.json();
+        if (d.success) {
+            closeUserChangePwdModal();
+            alert('密码修改成功，请重新登录');
+            logout();
+        } else {
+            alert(d.message || '修改失败');
+        }
+    } catch(e) { alert('网络错误'); }
+}
+
+// ── 忘记密码 ──
+function showForgotPwdModal() {
+    document.getElementById('forgot-email').value = '';
+    document.getElementById('forgot-code').value = '';
+    document.getElementById('forgot-newpwd').value = '';
+    document.getElementById('forgot-confirmpwd').value = '';
+    document.getElementById('forgot-step1-msg').style.display = 'none';
+    document.getElementById('forgot-step2-msg').style.display = 'none';
+    forgotStep(1);
+    document.getElementById('forgot-pwd-modal').style.display = 'flex';
+}
+function closeForgotPwdModal() {
+    document.getElementById('forgot-pwd-modal').style.display = 'none';
+}
+function forgotStep(n) {
+    document.getElementById('forgot-step1').style.display = n === 1 ? 'block' : 'none';
+    document.getElementById('forgot-step2').style.display = n === 2 ? 'block' : 'none';
+}
+async function sendResetCode() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const msgEl = document.getElementById('forgot-step1-msg');
+    if (!email) { showMsg(msgEl, 'danger', '请输入邮箱地址'); return; }
+    try {
+        const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const d = await res.json();
+        if (d.success) {
+            forgotStep(2);
+        } else {
+            showMsg(msgEl, 'danger', d.message || '发送失败');
+        }
+    } catch(e) { showMsg(msgEl, 'danger', '网络错误'); }
+}
+async function submitResetPwd() {
+    const email    = document.getElementById('forgot-email').value.trim();
+    const code     = document.getElementById('forgot-code').value.trim();
+    const newPwd   = document.getElementById('forgot-newpwd').value;
+    const confPwd  = document.getElementById('forgot-confirmpwd').value;
+    const msgEl    = document.getElementById('forgot-step2-msg');
+    if (!code) { showMsg(msgEl, 'danger', '请输入验证码'); return; }
+    if (!newPwd || newPwd.length < 6) { showMsg(msgEl, 'danger', '新密码至少6位'); return; }
+    if (newPwd !== confPwd) { showMsg(msgEl, 'danger', '两次密码不一致'); return; }
+    try {
+        const res = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code, new_password: newPwd })
+        });
+        const d = await res.json();
+        if (d.success) {
+            closeForgotPwdModal();
+            alert('密码重置成功，请重新登录');
+        } else {
+            showMsg(msgEl, 'danger', d.message || '重置失败');
+        }
+    } catch(e) { showMsg(msgEl, 'danger', '网络错误'); }
+}
+function showMsg(el, type, msg) {
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+// ── SMTP 配置 ──
+async function saveSmtpConfig() {
+    const smtp = {
+        host:      document.getElementById('smtp-host').value.trim(),
+        port:      parseInt(document.getElementById('smtp-port').value) || 465,
+        use_ssl:   document.getElementById('smtp-ssl').value === 'true',
+        user:      document.getElementById('smtp-user').value.trim(),
+        password:  document.getElementById('smtp-password').value,
+        from_addr: document.getElementById('smtp-from-addr').value.trim(),
+    };
+    try {
+        const res = await fetch('/api/system/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ smtp })
+        });
+        const d = await res.json();
+        alert(d.success ? 'SMTP配置已保存' : (d.message || '保存失败'));
+    } catch(e) { alert('网络错误'); }
+}
+async function testSmtpConfig() {
+    const to = document.getElementById('smtp-test-email').value.trim();
+    if (!to) { alert('请输入测试收件邮箱'); return; }
+    try {
+        const res = await fetch('/api/auth/test-smtp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ to })
+        });
+        const d = await res.json();
+        alert(d.message || (d.success ? '发送成功' : '发送失败'));
     } catch(e) { alert('网络错误'); }
 }

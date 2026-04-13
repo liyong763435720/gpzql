@@ -865,6 +865,9 @@
                     <input type="password" class="form-control" id="login-password" placeholder="请输入密码" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">登录</button>
+                <div class="text-end mt-2">
+                    <a href="#" style="font-size:13px;color:var(--primary);text-decoration:none;" onclick="showForgotPwdModal();return false;">忘记密码？</a>
+                </div>
             </form>
             <div id="payment-success-tip" class="alert alert-success mt-3" style="display:none;">
                 <i class="bi bi-check-circle-fill"></i> 支付成功！登录后即可使用已订阅的套餐权限。
@@ -876,6 +879,50 @@
                 {% else %}
                 <i class="bi bi-info-circle"></i> 如需账号授权，请联系管理员
                 {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 忘记密码 Modal -->
+    <div id="forgot-pwd-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;width:min(400px,95vw);box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">
+                <strong style="font-size:15px;"><i class="bi bi-envelope-open me-2"></i>找回密码</strong>
+                <button onclick="closeForgotPwdModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#888;">&times;</button>
+            </div>
+            <!-- Step 1: 输入邮箱 -->
+            <div id="forgot-step1" style="padding:20px;">
+                <p style="color:#666;font-size:14px;margin-bottom:16px;">输入绑定账号的邮箱，系统将发送6位验证码。</p>
+                <div class="mb-3">
+                    <label class="form-label">邮箱地址</label>
+                    <input type="email" class="form-control" id="forgot-email" placeholder="请输入邮箱">
+                </div>
+                <div id="forgot-step1-msg" class="alert" style="display:none;"></div>
+                <div class="d-flex gap-2 justify-content-end">
+                    <button class="btn btn-secondary" onclick="closeForgotPwdModal()">取消</button>
+                    <button class="btn btn-primary" onclick="sendResetCode()"><i class="bi bi-send me-1"></i>发送验证码</button>
+                </div>
+            </div>
+            <!-- Step 2: 输入验证码 + 新密码 -->
+            <div id="forgot-step2" style="display:none;padding:20px;">
+                <p style="color:#666;font-size:14px;margin-bottom:16px;">验证码已发送，15分钟内有效。</p>
+                <div class="mb-3">
+                    <label class="form-label">验证码</label>
+                    <input type="text" class="form-control" id="forgot-code" placeholder="请输入6位验证码" maxlength="6">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">新密码</label>
+                    <input type="password" class="form-control" id="forgot-newpwd" placeholder="至少6位">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">确认新密码</label>
+                    <input type="password" class="form-control" id="forgot-confirmpwd" placeholder="再次输入新密码">
+                </div>
+                <div id="forgot-step2-msg" class="alert" style="display:none;"></div>
+                <div class="d-flex gap-2 justify-content-end">
+                    <button class="btn btn-secondary" onclick="forgotStep(1)">返回</button>
+                    <button class="btn btn-primary" onclick="submitResetPwd()"><i class="bi bi-check-lg me-1"></i>重置密码</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1077,6 +1124,9 @@
                     </a>
                     <button class="popup-action" onclick="event.stopPropagation(); showMyOrdersModal()">
                         <i class="bi bi-receipt"></i> 我的订单
+                    </button>
+                    <button class="popup-action" onclick="event.stopPropagation(); showUserChangePwdModal()">
+                        <i class="bi bi-key"></i> 修改密码
                     </button>
                     <div class="popup-divider"></div>
                     <button class="popup-action danger" onclick="event.stopPropagation(); logout()">
@@ -2362,6 +2412,14 @@
                                                 </div>
                                                 <small class="form-text">关闭后新用户无法自行注册，仅管理员可添加账号</small>
                                             </div>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">注册邮箱验证</label>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="reg-email-verify-toggle">
+                                                    <label class="form-check-label" for="reg-email-verify-toggle">开启后注册时必须验证邮箱</label>
+                                                </div>
+                                                <small class="form-text">需先配置好SMTP邮件服务才能开启</small>
+                                            </div>
                                             <hr>
                                             <div class="mb-3">
                                                 <label class="form-label d-block">注册赠送点数</label>
@@ -2398,6 +2456,48 @@
                                                 <i class="bi bi-key"></i> 修改密码
                                             </button>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- SMTP 邮件配置 -->
+                            <div class="card mb-3">
+                                <div class="card-header"><h6><i class="bi bi-envelope-gear me-2"></i>邮件服务（SMTP）</h6></div>
+                                <div class="card-body">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label">SMTP 服务器</label>
+                                            <input type="text" class="form-control" id="smtp-host" placeholder="如 smtp.qq.com">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">端口</label>
+                                            <input type="number" class="form-control" id="smtp-port" value="465">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">加密方式</label>
+                                            <select class="form-select" id="smtp-ssl">
+                                                <option value="true">SSL</option>
+                                                <option value="false">STARTTLS</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label">账号（发件邮箱）</label>
+                                            <input type="text" class="form-control" id="smtp-user" placeholder="your@email.com">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">密码 / 授权码</label>
+                                            <input type="password" class="form-control" id="smtp-password" placeholder="SMTP授权码">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">发件人显示名（可选）</label>
+                                        <input type="text" class="form-control" id="smtp-from-addr" placeholder="涌金阁 <your@email.com>">
+                                    </div>
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                                        <button type="button" class="btn btn-primary" onclick="saveSmtpConfig()"><i class="bi bi-check-lg me-1"></i>保存SMTP配置</button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="testSmtpConfig()"><i class="bi bi-send me-1"></i>发送测试邮件</button>
+                                        <input type="email" class="form-control" id="smtp-test-email" placeholder="测试收件邮箱" style="width:200px;">
                                     </div>
                                 </div>
                             </div>
@@ -3501,6 +3601,34 @@
     </script>
 
     <!-- 我的订单 Modal -->
+    <!-- 用户修改密码 Modal -->
+    <div id="user-change-pwd-modal" style="display:none; position:fixed; inset:0; z-index:9990; background:rgba(0,0,0,0.45); align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:12px; width:min(380px,95vw); box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div style="padding:16px 20px; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; justify-content:space-between;">
+                <strong style="font-size:15px;"><i class="bi bi-key me-2"></i>修改密码</strong>
+                <button onclick="closeUserChangePwdModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#888;">&times;</button>
+            </div>
+            <div style="padding:20px;">
+                <div class="mb-3">
+                    <label class="form-label">当前密码</label>
+                    <input type="password" class="form-control" id="user-old-password" placeholder="请输入当前密码">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">新密码</label>
+                    <input type="password" class="form-control" id="user-new-password" placeholder="请输入新密码">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">确认新密码</label>
+                    <input type="password" class="form-control" id="user-confirm-password" placeholder="再次输入新密码">
+                </div>
+                <div class="d-flex gap-2 justify-content-end">
+                    <button class="btn btn-secondary" onclick="closeUserChangePwdModal()">取消</button>
+                    <button class="btn btn-primary" onclick="submitUserChangePwd()"><i class="bi bi-check-lg me-1"></i>确认修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="my-orders-modal" style="display:none; position:fixed; inset:0; z-index:9990; background:rgba(0,0,0,0.45); align-items:center; justify-content:center;">
         <div style="background:#fff; border-radius:12px; width:min(640px,95vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
             <div style="padding:16px 20px; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; justify-content:space-between;">
