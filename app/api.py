@@ -2967,6 +2967,93 @@ async def export_compare_sources(data: Dict = Body(...), session_id: Optional[st
         raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
 
 
+@app.post("/api/export/industry-enhanced")
+async def export_industry_enhanced(data: Dict = Body(...), session_id: Optional[str] = Cookie(None)):
+    """导出行业增强分析为Excel"""
+    auth.require_permission(session_id, 'export_excel')
+    try:
+        month = int(data.get('month', 1))
+        start_year = int(data.get('start_year', 2000))
+        end_year = int(data.get('end_year', datetime.now().year))
+        industry_type = data.get('industry_type', 'sw')
+        market = data.get('market') or None
+        requested_data_source = data.get('data_source')
+        current_data_source = resolve_data_source(requested_data_source, market=market)
+        enhanced_data_source = current_data_source if market else None
+        exclude_relisting = bool(data.get('exclude_relisting', False))
+        results = statistics.calculate_industry_enhanced_stats(
+            month, start_year, end_year, industry_type,
+            data_source=enhanced_data_source, market=market, exclude_relisting=exclude_relisting
+        )
+
+        export_data = []
+        for idx, item in enumerate(results, 1):
+            export_data.append({
+                '排名': idx,
+                '行业名称': item.get('industry_name', ''),
+                '股票数量': item.get('stock_count', 0),
+                '样本年数': item.get('total_years', 0),
+                '期望收益率(%)': item.get('expected_return', 0),
+                '上涨概率(%)': item.get('up_probability', 0),
+                '平均涨幅(%)': item.get('avg_up_return', 0),
+                '平均跌幅(%)': item.get('avg_down_return', 0),
+                '跑赢大盘概率(%)': item.get('excess_market_prob', 0),
+                '近5年上涨率(%)': item.get('recent_up_prob'),
+                '一致性': item.get('consistency'),
+            })
+
+        industry_type_name = '申万' if industry_type == 'sw' else '中信'
+        filename = f"{industry_type_name}行业增强_{month}月分析.xlsx"
+        return export_to_excel(export_data, filename, f"{industry_type_name}行业增强")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
+
+@app.post("/api/export/month-enhanced")
+async def export_month_enhanced(data: Dict = Body(...), session_id: Optional[str] = Cookie(None)):
+    """导出月榜单增强分析为Excel"""
+    auth.require_permission(session_id, 'export_excel')
+    try:
+        month = int(data.get('month', 1))
+        start_year = int(data.get('start_year', 2000))
+        end_year = int(data.get('end_year', datetime.now().year))
+        top_n = int(data.get('top_n', 50))
+        min_years = int(data.get('min_years', 3))
+        market = data.get('market') or None
+        requested_data_source = data.get('data_source')
+        current_data_source = resolve_data_source(requested_data_source, market=market)
+        enhanced_data_source = current_data_source if market else None
+        exclude_relisting = bool(data.get('exclude_relisting', False))
+        results = statistics.calculate_month_filter_enhanced_stats(
+            month, start_year, end_year, top_n,
+            data_source=enhanced_data_source, min_years=min_years, market=market,
+            exclude_relisting=exclude_relisting
+        )
+
+        export_data = []
+        for idx, item in enumerate(results, 1):
+            export_data.append({
+                '排名': idx,
+                '股票代码': item.get('symbol', ''),
+                '股票名称': item.get('name', ''),
+                '样本年数': item.get('total_years', 0),
+                '期望收益率(%)': item.get('expected_return', 0),
+                '上涨概率(%)': item.get('up_probability', 0),
+                '平均涨幅(%)': item.get('avg_up_return', 0),
+                '平均跌幅(%)': item.get('avg_down_return', 0),
+                '最大涨幅(%)': item.get('max_up', 0),
+                '最大跌幅(%)': item.get('max_down', 0),
+                '跑赢大盘概率(%)': item.get('excess_market_prob', 0),
+                '近5年上涨率(%)': item.get('recent_up_prob'),
+                '一致性': item.get('consistency'),
+            })
+
+        filename = f"{month}月榜单增强前{top_n}支股票.xlsx"
+        return export_to_excel(export_data, filename, f"{month}月榜单增强")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
+
 # ─── 数据管理（备份 / 还原） ───────────────────────────────────────────────────
 
 from app.backup_manager import (

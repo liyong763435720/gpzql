@@ -1007,70 +1007,17 @@ function displayStockResult(data) {
 async function exportStockStatistics() {
     if (!requireExportPerm()) return;
     const code = document.getElementById('stock-code').value.trim();
-    const month = parseInt(document.getElementById('stock-month').value);
-    const startYear = parseInt(document.getElementById('stock-start-year').value);
-    const endYear = parseInt(document.getElementById('stock-end-year').value);
-    if (!code) {
-        alert('请输入股票代码');
-        return;
-    }
-
+    if (!code) { alert('请输入股票代码'); return; }
     try {
-        const requestBody = {
-            code: code,
-            month: month,
-            start_year: startYear,
-            end_year: endYear
-        };
-
-        console.log('开始导出，请求参数:', requestBody);
-        const response = await fetch('/api/export/stock-statistics', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        console.log('导出响应状态:', response.status, response.statusText);
-        console.log('导出响应头:', Object.fromEntries(response.headers.entries()));
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const contentDisposition = response.headers.get('Content-Disposition') || '';
-            let filename = '股票统计.xlsx';
-            if (contentDisposition) {
-                // 处理 filename*=UTF-8'' 格式
-                const match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-                if (match) {
-                    filename = decodeURIComponent(match[1]);
-                } else {
-                    const match2 = contentDisposition.match(/filename="?([^"]+)"?/);
-                    if (match2) {
-                        filename = match2[1];
-                    }
-                }
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            let errorMsg = '未知错误';
-            try {
-                const error = await response.json();
-                errorMsg = error.detail || error.message || '未知错误';
-            } catch (e) {
-                errorMsg = `HTTP ${response.status}: ${response.statusText}`;
-            }
-            handleExportError(errorMsg);
-        }
-    } catch (error) {
-        handleExportError(error.message);
+        const filename = await _postDownload('/api/export/stock-statistics', {
+            code, month: parseInt(document.getElementById('stock-month').value),
+            start_year: parseInt(document.getElementById('stock-start-year').value),
+            end_year: parseInt(document.getElementById('stock-end-year').value)
+        }, '正在导出股票统计…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
     }
 }
 
@@ -1170,49 +1117,21 @@ function displayFilterResult(data, month, dataSource, minCount) {
 // 导出月榜单
 async function exportMonthFilter() {
     if (!requireExportPerm()) return;
-    const month = parseInt(document.getElementById('filter-month').value);
-    const startYear = parseInt(document.getElementById('filter-start-year').value);
-    const endYear = parseInt(document.getElementById('filter-end-year').value);
-    const topN = parseInt(document.getElementById('filter-top-n').value);
-    const minCount = parseInt(document.getElementById('filter-min-count').value) || 0;
     const market = document.getElementById('filter-market').value;
-
+    const body = {
+        month: parseInt(document.getElementById('filter-month').value),
+        start_year: parseInt(document.getElementById('filter-start-year').value),
+        end_year: parseInt(document.getElementById('filter-end-year').value),
+        top_n: parseInt(document.getElementById('filter-top-n').value),
+        min_count: parseInt(document.getElementById('filter-min-count').value) || 0
+    };
+    if (market) body.market = market;
     try {
-        const requestBody = {
-            month: month,
-            start_year: startYear,
-            end_year: endYear,
-            top_n: topN,
-            min_count: minCount
-        };
-        if (market) {
-            requestBody.market = market;
-        }
-
-        const response = await fetch('/api/export/month-filter', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || '月榜单.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            const error = await response.json();
-            handleExportError(error.detail || '未知错误');
-        }
-    } catch (error) {
-        handleExportError(error.message);
+        const filename = await _postDownload('/api/export/month-filter', body, '正在导出月榜单…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
     }
 }
 
@@ -1312,47 +1231,20 @@ function displayIndustryResult(data, month, industryType, dataSource) {
 // 导出行业统计
 async function exportIndustryStatistics() {
     if (!requireExportPerm()) return;
-    const industryType = document.getElementById('industry-type').value;
-    const month = parseInt(document.getElementById('industry-month').value);
-    const startYear = parseInt(document.getElementById('industry-start-year').value);
-    const endYear = parseInt(document.getElementById('industry-end-year').value);
     const market = document.getElementById('industry-market').value;
-
+    const body = {
+        month: parseInt(document.getElementById('industry-month').value),
+        start_year: parseInt(document.getElementById('industry-start-year').value),
+        end_year: parseInt(document.getElementById('industry-end-year').value),
+        industry_type: document.getElementById('industry-type').value
+    };
+    if (market) body.market = market;
     try {
-        const requestBody = {
-            month: month,
-            start_year: startYear,
-            end_year: endYear,
-            industry_type: industryType
-        };
-        if (market) {
-            requestBody.market = market;
-        }
-
-        const response = await fetch('/api/export/industry-statistics', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || '行业统计.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            const error = await response.json();
-            handleExportError(error.detail || '未知错误');
-        }
-    } catch (error) {
-        handleExportError(error.message);
+        const filename = await _postDownload('/api/export/industry-statistics', body, '正在导出行业统计…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
     }
 }
 
@@ -1470,55 +1362,23 @@ function displayIndustryTopStocks(data, industryName, month, dataSource) {
 async function exportIndustryTopStocks() {
     if (!requireExportPerm()) return;
     const industryName = document.getElementById('industry-select').value;
-    const industryType = document.getElementById('industry-type').value;
-    const month = parseInt(document.getElementById('industry-month').value);
-    const startYear = parseInt(document.getElementById('industry-start-year').value);
-    const endYear = parseInt(document.getElementById('industry-end-year').value);
-    const topN = parseInt(document.getElementById('industry-top-n').value);
+    if (!industryName) { alert('请先选择行业'); return; }
     const market = document.getElementById('industry-top-market').value;
-
-    if (!industryName) {
-        alert('请先选择行业');
-        return;
-    }
-
+    const body = {
+        industry_name: industryName,
+        month: parseInt(document.getElementById('industry-month').value),
+        start_year: parseInt(document.getElementById('industry-start-year').value),
+        end_year: parseInt(document.getElementById('industry-end-year').value),
+        industry_type: document.getElementById('industry-type').value,
+        top_n: parseInt(document.getElementById('industry-top-n').value)
+    };
+    if (market) body.market = market;
     try {
-        const requestBody = {
-            industry_name: industryName,
-            month: month,
-            start_year: startYear,
-            end_year: endYear,
-            industry_type: industryType,
-            top_n: topN
-        };
-        if (market) {
-            requestBody.market = market;
-        }
-
-        const response = await fetch('/api/export/industry-top-stocks', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || '行业前20支股票.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            const error = await response.json();
-            handleExportError(error.detail || '未知错误');
-        }
-    } catch (error) {
-        handleExportError(error.message);
+        const filename = await _postDownload('/api/export/industry-top-stocks', body, '正在导出行业前N支股票…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
     }
 }
 
@@ -2012,51 +1872,20 @@ function displayStockMultiMonthResult(data) {
 async function exportMultiMonthStatistics() {
     if (!requireExportPerm()) return;
     const code = document.getElementById('stock-multi-code').value.trim();
-    const startYear = parseInt(document.getElementById('stock-multi-start-year').value);
-    const endYear = parseInt(document.getElementById('stock-multi-end-year').value);
-    // 获取选中的月份
+    if (!code) { alert('请输入股票代码'); return; }
     const monthSelect = document.getElementById('stock-multi-months');
     const selectedMonths = Array.from(monthSelect.selectedOptions).map(opt => parseInt(opt.value));
-    const months = selectedMonths.length > 0 ? selectedMonths : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-    if (!code) {
-        alert('请输入股票代码');
-        return;
-    }
-
     try {
-        const requestBody = {
-            code: code,
-            months: months,
-            start_year: startYear,
-            end_year: endYear
-        };
-
-        const response = await fetch('/api/export/multi-month-statistics', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || '多月统计.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            const error = await response.json();
-            handleExportError(error.detail || '未知错误');
-        }
-    } catch (error) {
-        handleExportError(error.message);
+        const filename = await _postDownload('/api/export/multi-month-statistics', {
+            code,
+            months: selectedMonths.length > 0 ? selectedMonths : [1,2,3,4,5,6,7,8,9,10,11,12],
+            start_year: parseInt(document.getElementById('stock-multi-start-year').value),
+            end_year: parseInt(document.getElementById('stock-multi-end-year').value)
+        }, '正在导出多月统计…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
     }
 }
 
@@ -2215,69 +2044,28 @@ function displayCompareResult(data, message) {
 async function exportCompareSources() {
     if (!requireExportPerm()) return;
     const code = document.getElementById('compare-code').value.trim();
-    const year = document.getElementById('compare-year').value;
-    const month = document.getElementById('compare-month').value;
-    const date = document.getElementById('compare-date').value.trim();
-    
-    if (!code) {
-        alert('请输入股票代码');
-        return;
-    }
-    
-    // 转换股票代码格式
+    if (!code) { alert('请输入股票代码'); return; }
     let ts_code = code;
     if (/^\d{6}$/.test(code)) {
-        if (code.startsWith('0') || code.startsWith('3')) {
-            ts_code = code + '.SZ';
-        } else if (code.startsWith('6') || code.startsWith('9')) {
-            ts_code = code + '.SH';
-        } else if (code.startsWith('8') || code.startsWith('4')) {
-            ts_code = code + '.BJ';
-        } else {
-            ts_code = code + '.SH';
-        }
+        if (code.startsWith('0') || code.startsWith('3')) ts_code = code + '.SZ';
+        else if (code.startsWith('6') || code.startsWith('9')) ts_code = code + '.SH';
+        else if (code.startsWith('8') || code.startsWith('4')) ts_code = code + '.BJ';
+        else ts_code = code + '.SH';
     }
-    
+    const date = document.getElementById('compare-date').value.trim();
+    const year = document.getElementById('compare-year').value;
+    const month = document.getElementById('compare-month').value;
+    const body = { ts_code };
+    if (date) { body.trade_date = date; } else {
+        if (year) body.year = parseInt(year);
+        if (month) body.month = parseInt(month);
+    }
     try {
-        const requestBody = {
-            ts_code: ts_code
-        };
-        
-        if (date) {
-            requestBody.trade_date = date;
-        } else {
-            if (year) {
-                requestBody.year = parseInt(year);
-            }
-            if (month) {
-                requestBody.month = parseInt(month);
-            }
-        }
-        
-        const response = await fetch('/api/export/compare-sources', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || '数据校对.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            const error = await response.json();
-            handleExportError(error.detail || error.message || '未知错误');
-        }
-    } catch (error) {
-        handleExportError(error.message);
+        const filename = await _postDownload('/api/export/compare-sources', body, '正在导出数据校对…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
     }
 }
 
@@ -3916,7 +3704,12 @@ function renderEnhancedTable(data) {
                 <tbody>${rows}</tbody>
             </table>
         </div>
-        <div class="text-muted small mt-1">共 ${data.length} 个行业</div>`;
+        <div class="text-muted small mt-1">共 ${data.length} 个行业</div>
+        <div class="mt-3">
+            <button class="btn btn-success" onclick="exportIndustryEnhanced()">
+                <i class="bi bi-file-earmark-excel"></i> 导出Excel
+            </button>
+        </div>`;
 }
 
 // ===== 月榜单增强 =====
@@ -4009,7 +3802,51 @@ function renderEnhancedMonthTable(data) {
                 <tbody>${rows}</tbody>
             </table>
         </div>
-        <div class="text-muted small mt-1">共 ${data.length} 条记录</div>`;
+        <div class="text-muted small mt-1">共 ${data.length} 条记录</div>
+        <div class="mt-3">
+            <button class="btn btn-success" onclick="exportMonthEnhanced()">
+                <i class="bi bi-file-earmark-excel"></i> 导出Excel
+            </button>
+        </div>`;
+}
+
+async function exportIndustryEnhanced() {
+    if (!requireExportPerm()) return;
+    const endYearEl = document.getElementById('enhanced-end-year');
+    try {
+        const filename = await _postDownload('/api/export/industry-enhanced', {
+            market: document.getElementById('enhanced-market').value || null,
+            industry_type: document.getElementById('enhanced-industry-type').value,
+            month: parseInt(document.getElementById('enhanced-month').value),
+            start_year: parseInt(document.getElementById('enhanced-start-year').value),
+            end_year: endYearEl.value ? parseInt(endYearEl.value) : new Date().getFullYear(),
+            exclude_relisting: document.getElementById('enhanced-exclude-relisting')?.checked || false
+        }, '正在导出行业增强分析…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
+    }
+}
+
+async function exportMonthEnhanced() {
+    if (!requireExportPerm()) return;
+    const endYearEl = document.getElementById('menhanced-end-year');
+    try {
+        const filename = await _postDownload('/api/export/month-enhanced', {
+            market: document.getElementById('menhanced-market').value || null,
+            month: parseInt(document.getElementById('menhanced-month').value),
+            start_year: parseInt(document.getElementById('menhanced-start-year').value),
+            end_year: endYearEl.value ? parseInt(endYearEl.value) : new Date().getFullYear(),
+            min_years: parseInt(document.getElementById('menhanced-min-years').value) || 3,
+            top_n: parseInt(document.getElementById('menhanced-top-n').value),
+            exclude_relisting: document.getElementById('menhanced-exclude-relisting')?.checked || false
+        }, '正在导出月榜单增强…');
+        showToast('导出成功：' + filename, 'success');
+    } catch(e) {
+        _hideProgress(false);
+        handleExportError(e.message);
+    }
 }
 
 // ===== 使用指南 =====
@@ -5124,6 +4961,44 @@ function _xhrUpload(url, formData, labelUpload, labelProcess) {
         xhr.onerror = () => reject(new Error('网络错误'));
         xhr.send(formData);
     });
+}
+
+// POST 下载 + 进度（流式读取，自动触发浏览器下载，返回文件名）
+async function _postDownload(url, body, label) {
+    _showProgress(label, null);
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || 'HTTP ' + res.status);
+    }
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m1 = cd.match(/filename\*=UTF-8''(.+)/);
+    const m2 = cd.match(/filename="?([^";\n]+)"?/);
+    const filename = m1 ? decodeURIComponent(m1[1]) : m2 ? m2[1] : 'export.xlsx';
+    const total = parseInt(res.headers.get('Content-Length') || '0');
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        _showProgress(label, total ? Math.round(received / total * 100) : null);
+    }
+    const blob = new Blob(chunks);
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = filename;
+    document.body.appendChild(a); a.click();
+    URL.revokeObjectURL(blobUrl); document.body.removeChild(a);
+    _hideProgress(true);
+    return filename;
 }
 
 // fetch 下载 + 进度（流式读取，自动触发浏览器下载）
